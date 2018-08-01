@@ -12,24 +12,41 @@
       #messages li { padding: 5px 10px; }
       #messages li:nth-child(odd) { background: #eee; }
       #messages { margin-bottom: 40px }
+      #display { }
     </style>
   </head>
   <body>
-    <ul id="messages"></ul>
-    <form action="">
-      <input id="m" autocomplete="off" /><button>Send</button>
-    </form>
     <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script>
       $(function () {
-        var socket = io();
-        $('form').submit(function(){
-          socket.emit('chat message', $('#m').val());
-          $('#m').val('');
-          return false;
-        });
-        socket.on('chat message', function(msg){
+        const socket = io();
+
+        const KEY = {
+          LEFT: 37,
+          UP: 38,
+          RIGHT: 39,
+          DOWN: 40
+        }
+
+        const allowedKeycodes = [KEY.LEFT, KEY.UP, KEY.RIGHT, KEY.DOWN];
+        // capture onKeyDown and onKeyUp
+        $('body').on('keydown', function(key) {
+          console.log(key.keyCode)
+          // if one of the allowed keys, send it
+          if (allowedKeycodes.includes(key.keyCode)) {
+            socket.emit('keys pressed locally', key.keyCode);
+          }
+        })
+
+        $('body').on('keyup', function(key) {
+          // if one of the allowed keys, send it
+          if (allowedKeycodes.includes(key.keyCode)) {
+            socket.emit('keys unpressed locally', key.keyCode);
+          }
+        })
+
+        socket.on('keys changed remotely', function(msg){
           $('#messages').append($('<li>').text(msg));
           window.scrollTo(0, document.body.scrollHeight);
         });

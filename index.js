@@ -8,11 +8,25 @@ app.get('/', function(req, res){
 });
 
 io.on('connection', function(socket){
-  socket.on('chat message', function(msg){
-    io.emit('chat message', msg);
+  socket.on('keys pressed locally', function(msg){
+    console.log('p' + convertKey(msg))
+    io.emit('keys changed remotely', msg);
+  });
+
+  socket.on('keys unpressed locally', function(msg){
+    console.log('u' + convertKey(msg))
+    io.emit('keys changed remotely', msg);
   });
 });
 
 http.listen(port, function(){
   console.log('listening on *:' + port);
 });
+
+function convertKey (key) {
+  if (key === 37) {
+    return '<<'
+  } else if (key === 39) {
+    return '>>'
+  }
+}
