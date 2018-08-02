@@ -54,24 +54,11 @@ io.on('connection', (socket) => {
   socket.on('keys pressed locally', (msg) => {
     if (acceptInput(socket.id)) {
       handleInput(socket.id, msg)
-      // console.log('p' + convertKey(msg))
-      // applyGlobalKeyStatus (msg, true)
-      // printGlobalKeyStatuses()
       console.log(`Accepted input for: ${socket.id}`)
       io.emit('players', PLAYERS)
     }
 
   })
-
-  // socket.on('keys unpressed locally', (msg) => {
-  //   if (acceptInput(socket.id)) {
-  //     // console.log('u' + convertKey(msg))
-  //     // applyGlobalKeyStatus (msg, false)
-  //     // printGlobalKeyStatuses()
-  //   }
-
-  //   io.emit('keys changed remotely', msg)
-  // })
 
   socket.on('disconnect', () => {
     PLAYERS = PLAYERS.filter(player => {
@@ -101,23 +88,24 @@ function acceptInput (socketId) {
 
 function handleInput (socketId, keyCode) {
   if (!ALLOWED_KEY_CODES.includes(keyCode)) {
+    console.log('Keycode not allowed')
     return
   }
 
   // DO we really need the isMovementAllowed function? This seems like it wouldn't be required
   if (isMovementAllowed(socketId, keyCode)) {
-    PLAYERS.forEach((player, index) => {
-      console.log(`${index}:  X: ${chalk.red(player.x)}, Y: ${chalk.red(player.y)}`)
-    })
     if (keyCode === LEFT) {
       PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x--
     } else if (keyCode === UP) {
-      PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y++
+      PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y--
     } else if (keyCode === RIGHT) {
       PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x++
     } else if (keyCode === DOWN) {
-      PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y--
+      PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y++
     }
+    PLAYERS.forEach((player, index) => {
+      console.log(`${index}:  X: ${chalk.red(player.x)}, Y: ${chalk.red(player.y)}`)
+    })
     turnCounter++
   } else {
     // turnCounter is not updated. Next input may come from the same user
@@ -133,14 +121,18 @@ function isMovementAllowed (socketId, keyCode) {
   })
 
   if (keyCode === LEFT && player.x !== 0) {
+    console.log('left')
     return true
   } else if (keyCode === UP && player.y !== 0) {
+    console.log('up')
     return true
   // TODO: LOL, so hacky. Jeez. Revist this later. We may want to make a map ringed with "false" and prevent
   // movement into "false" squares
   } else if (keyCode === RIGHT && player.x < BASIC_MAP[0].length) {
+    console.log('right')
     return true
   } else if (keyCode === DOWN && player.y < BASIC_MAP.length) {
+    console.log('down')
     return true
   } else {
     return false

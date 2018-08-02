@@ -40,12 +40,13 @@
 
         // capture onKeyDown and onKeyUp
         $('body').on('keydown', function(key) {
+          // TODO: there is no reason to check if this is held now
           processKeyDown(key.keyCode)
         })
 
-        $('body').on('keyup', function(key) {
-          processKeyUp(key.keyCode)
-        })
+        // $('body').on('keyup', function(key) {
+        //   processKeyUp(key.keyCode)
+        // })
 
         function processKeyDown(keyCode) {
           // TODO: clean this up and make it more general. This is too much code
@@ -83,34 +84,34 @@
           }
         }
 
-        function processKeyUp(keyCode) {
-          switch (keyCode) {
-            case KEY.LEFT:
-              if (HELD.LEFT) {
-                emitKeyUp(KEY.LEFT)
-                HELD.LEFT = false
-              }
-              break
-            case KEY.UP:
-              if (HELD.UP) {
-                emitKeyUp(KEY.UP)
-                HELD.UP = false
-                break
-              }
-            case KEY.RIGHT:
-              if (HELD.RIGHT) {
-                emitKeyUp(KEY.RIGHT)
-                HELD.RIGHT = false
-                break
-              }
-            case KEY.DOWN:
-              if (HELD.DOWN) {
-                emitKeyUp(KEY.DOWN)
-                HELD.DOWN = false
-                break
-              }
-          }
-        }
+        // function processKeyUp(keyCode) {
+        //   switch (keyCode) {
+        //     case KEY.LEFT:
+        //       if (HELD.LEFT) {
+        //         emitKeyUp(KEY.LEFT)
+        //         HELD.LEFT = false
+        //       }
+        //       break
+        //     case KEY.UP:
+        //       if (HELD.UP) {
+        //         emitKeyUp(KEY.UP)
+        //         HELD.UP = false
+        //         break
+        //       }
+        //     case KEY.RIGHT:
+        //       if (HELD.RIGHT) {
+        //         emitKeyUp(KEY.RIGHT)
+        //         HELD.RIGHT = false
+        //         break
+        //       }
+        //     case KEY.DOWN:
+        //       if (HELD.DOWN) {
+        //         emitKeyUp(KEY.DOWN)
+        //         HELD.DOWN = false
+        //         break
+        //       }
+        //   }
+        // }
 
         function emitKeyUp(keyCode) {
           if (ALLOWED_KEYCODES.includes(keyCode)) {
@@ -118,22 +119,22 @@
           }
         }
 
-        socket.on('keys changed remotely', function(msg){
-          $('#messages').append($('<li>').text(msg));
-          window.scrollTo(0, document.body.scrollHeight);
-        });
-
         socket.on('map', map => {
           // TODO: clean up, create viewport, cache these
           if ($('#map').length === 0) {
             $('body').append(arrayToHTMLTable(map))
           }
-          console.table(map)
+          // console.table(map)
         });
 
         socket.on('players', players => {
           // each player needs to be drawn, or just draw the updated player?????
+          // TODO: need to clear before we draw
+          // Should we store the array passed back and redraw the table?
+          $('#map').find('td').html('')
+
           players.forEach((player, playerId) => {
+            // console.log(player)
             drawPlayer(playerId, player.x, player.y)
           })
         })
@@ -141,19 +142,21 @@
         function drawPlayer (playerId, x, y) {
           // TODO: classes, IDs, etc
           // TODO: less hacky garbage
-          const playerClass = `player${playerId}`
-          $('table').find(`tr:eq(${y})`).find(`td:eq(${x})`).html(`<span class="${playerClass}">@</span>`)
+          const playerClass = `player${playerId + 1}`
+          console.log(`drawPlayer: x${x}, y${y}`)
+          // TODO: something here is wrong
+          $('#map').find(`tr:eq(${y})`).find(`td:eq(${x})`).html(`<span class="${playerClass}">@</span>`)
         }
 
         function arrayToHTMLTable (array) {
           // TODO: this is a hot mess. Improve this?
           let derp = '<table id="map">'
             array.forEach(row => {
-              derp += '</tr>'
+              derp += '<tr>'
               row.forEach(columnItem => {
                 derp += `<td class="${columnItem ? 'accessible' : 'unaccessible'}"></td>`
               })
-              derp += '<tr>'
+              derp += '</tr>'
             })
           derp += '</table>'
           return derp
