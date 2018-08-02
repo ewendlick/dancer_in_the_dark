@@ -29,22 +29,94 @@
           DOWN: 40
         }
 
-        const allowedKeycodes = [KEY.LEFT, KEY.UP, KEY.RIGHT, KEY.DOWN];
+        const HELD = {
+          LEFT: false,
+          UP: false,
+          RIGHT: false,
+          DOWN: false
+        }
+
+        const ALLOWED_KEYCODES = [KEY.LEFT, KEY.UP, KEY.RIGHT, KEY.DOWN];
+
         // capture onKeyDown and onKeyUp
         $('body').on('keydown', function(key) {
-          console.log(key.keyCode)
-          // if one of the allowed keys, send it
-          if (allowedKeycodes.includes(key.keyCode)) {
-            socket.emit('keys pressed locally', key.keyCode);
-          }
+          processKeyDown(key.keyCode)
         })
 
         $('body').on('keyup', function(key) {
-          // if one of the allowed keys, send it
-          if (allowedKeycodes.includes(key.keyCode)) {
-            socket.emit('keys unpressed locally', key.keyCode);
-          }
+          processKeyUp(key.keyCode)
         })
+
+        function processKeyDown(keyCode) {
+          // TODO: clean this up and make it more general. This is too much code
+          switch (keyCode) {
+            case KEY.LEFT:
+              if (!HELD.LEFT) {
+                emitKeyDown(KEY.LEFT)
+                HELD.LEFT = true
+              }
+              break
+            case KEY.UP:
+              if (!HELD.UP) {
+                emitKeyDown(KEY.UP)
+                HELD.UP = true
+                break
+              }
+            case KEY.RIGHT:
+              if (!HELD.RIGHT) {
+                emitKeyDown(KEY.RIGHT)
+                HELD.RIGHT = true
+                break
+              }
+            case KEY.DOWN:
+              if (!HELD.DOWN) {
+                emitKeyDown(KEY.DOWN)
+                HELD.DOWN = true
+                break
+              }
+          }
+        }
+
+        function emitKeyDown(keyCode) {
+          if (ALLOWED_KEYCODES.includes(keyCode)) {
+            socket.emit('keys pressed locally', keyCode);
+          }
+        }
+
+        function processKeyUp(keyCode) {
+          switch (keyCode) {
+            case KEY.LEFT:
+              if (HELD.LEFT) {
+                emitKeyUp(KEY.LEFT)
+                HELD.LEFT = false
+              }
+              break
+            case KEY.UP:
+              if (HELD.UP) {
+                emitKeyUp(KEY.UP)
+                HELD.UP = false
+                break
+              }
+            case KEY.RIGHT:
+              if (HELD.RIGHT) {
+                emitKeyUp(KEY.RIGHT)
+                HELD.RIGHT = false
+                break
+              }
+            case KEY.DOWN:
+              if (HELD.DOWN) {
+                emitKeyUp(KEY.DOWN)
+                HELD.DOWN = false
+                break
+              }
+          }
+        }
+
+        function emitKeyUp(keyCode) {
+          if (ALLOWED_KEYCODES.includes(keyCode)) {
+            socket.emit('keys unpressed locally', keyCode);
+          }
+        }
 
         socket.on('keys changed remotely', function(msg){
           $('#messages').append($('<li>').text(msg));
