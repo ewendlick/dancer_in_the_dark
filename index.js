@@ -16,6 +16,13 @@ const GLOBAL_KEY_STATUS = {
   DOWN: false
 }
 
+const BASIC_MAP = [
+  [true, true, true, true],
+  [true, true, true, true],
+  [true, true, true, true],
+  [true, true, true, true]
+]
+
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html')
 })
@@ -72,21 +79,21 @@ http.listen(port, () => {
 })
 
 // TODO: keyCode mapping in this file
-function convertKey (key) {
-  if (key === 37) {
-    // left
-    return '⟵'
-  } else if (key === 38) {
-    // up
-    return '↑'
-  } else if (key === 39) {
-    // right
-    return '⟶'
-  } else if (key === 40) {
-    // down
-    return '↓'
-  }
-}
+// function convertKey (key) {
+//   if (key === 37) {
+//     // left
+//     return '⟵'
+//   } else if (key === 38) {
+//     // up
+//     return '↑'
+//   } else if (key === 39) {
+//     // right
+//     return '⟶'
+//   } else if (key === 40) {
+//     // down
+//     return '↓'
+//   }
+// }
 
 // function applyGlobalKeyStatus (keyCode, status) {
 //   if (keyCode === 37) {
