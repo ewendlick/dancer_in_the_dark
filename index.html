@@ -122,7 +122,61 @@
           $('#messages').append($('<li>').text(msg));
           window.scrollTo(0, document.body.scrollHeight);
         });
+
+        socket.on('map', map => {
+          // TODO: clean up, create viewport, cache these
+          if ($('#map').length === 0) {
+            $('body').append(arrayToHTMLTable(map))
+          }
+          console.table(map)
+        });
+
+        socket.on('players', players => {
+          // each player needs to be drawn, or just draw the updated player?????
+          players.forEach((player, playerId) => {
+            drawPlayer(playerId, player.x, player.y)
+          })
+        })
+
+        function drawPlayer (playerId, x, y) {
+          // TODO: classes, IDs, etc
+          // TODO: less hacky garbage
+          const playerClass = `player${playerId}`
+          $('table').find(`tr:eq(${y})`).find(`td:eq(${x})`).html(`<span class="${playerClass}">@</span>`)
+        }
+
+        function arrayToHTMLTable (array) {
+          // TODO: this is a hot mess. Improve this?
+          let derp = '<table id="map">'
+            array.forEach(row => {
+              derp += '</tr>'
+              row.forEach(columnItem => {
+                derp += `<td class="${columnItem ? 'accessible' : 'unaccessible'}"></td>`
+              })
+              derp += '<tr>'
+            })
+          derp += '</table>'
+          return derp
+        }
       });
     </script>
+    <style>
+      .accessible {
+        height: 20px;
+        width: 20px;
+        background-color: #bbffff;
+      }
+      .unaccessible {
+        height: 20px;
+        width: 20px;
+        background-color: #ffbbff;
+      }
+      .player1 {
+        color: #333;
+      }
+      .player2 {
+        color: #fb0;
+      }
+    </style>
   </body>
 </html>

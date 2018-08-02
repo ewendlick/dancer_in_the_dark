@@ -5,7 +5,7 @@ const chalk = require('chalk')
 const port = process.env.PORT || 3000
 
 let PLAYERS = []
-let ALLOWED_PLAYERS = [0, 1]
+let ALLOWED_PLAYERS = [0, 1] // change to a number, ALLOWED_PLAYER_COUNT
 let getPlayersTurn = () => { return ALLOWED_PLAYERS[turnCounter % ALLOWED_PLAYERS.length] }
 let turnCounter = 0
 
@@ -16,9 +16,15 @@ const GLOBAL_KEY_STATUS = {
   DOWN: false
 }
 
+const LEFT = 37
+const UP = 38
+const RIGHT = 39
+const DOWN = 40
+const ALLOWED_KEY_CODES = [LEFT, UP, RIGHT, DOWN]
+
 const BASIC_MAP = [
   [true, true, true, true],
-  [true, true, true, true],
+  [true, true, false, true],
   [true, true, true, true],
   [true, true, true, true]
 ]
@@ -39,21 +45,22 @@ io.on('connection', (socket) => {
   PLAYERS.push({ id: socket.id,
                  x: 0,
                  y: 0,
-                 remainingArrows: 2,
-                 keyStatus: { left: false,
-                              up: false,
-                              right: false,
-                              down: false }})
+                 remainingArrows: 2 })
+
+  io.emit('map', BASIC_MAP) // Fires for each page connection :/
+  // TODO: need to look into how to handle this
+  io.emit('players', PLAYERS)
 
   socket.on('keys pressed locally', (msg) => {
     if (acceptInput(socket.id)) {
+      handleInput(socket.id, msg)
       // console.log('p' + convertKey(msg))
       // applyGlobalKeyStatus (msg, true)
       // printGlobalKeyStatuses()
-      console.log('accepted input!')
+      console.log(`Accepted input for: ${socket.id}`)
+      io.emit('players', PLAYERS)
     }
 
-    io.emit('keys changed remotely', msg)
   })
 
   // socket.on('keys unpressed locally', (msg) => {
@@ -78,43 +85,7 @@ http.listen(port, () => {
   console.log('listening on *:' + port);
 })
 
-// TODO: keyCode mapping in this file
-// function convertKey (key) {
-//   if (key === 37) {
-//     // left
-//     return '⟵'
-//   } else if (key === 38) {
-//     // up
-//     return '↑'
-//   } else if (key === 39) {
-//     // right
-//     return '⟶'
-//   } else if (key === 40) {
-//     // down
-//     return '↓'
-//   }
-// }
-
-// function applyGlobalKeyStatus (keyCode, status) {
-//   if (keyCode === 37) {
-//     GLOBAL_KEY_STATUS.LEFT = status
-//   } else if (keyCode === 38) {
-//     GLOBAL_KEY_STATUS.UP = status
-//   } else if (keyCode === 39) {
-//     GLOBAL_KEY_STATUS.RIGHT = status
-//   } else if (keyCode === 40) {
-//     GLOBAL_KEY_STATUS.DOWN = status
-//   }
-// }
-
-// function printGlobalKeyStatuses () {
-//   // TODO: stop with the magic numbers
-//   console.log(onOffHighlight(GLOBAL_KEY_STATUS.LEFT, 37) +
-//               onOffHighlight(GLOBAL_KEY_STATUS.UP, 38) +
-//               onOffHighlight(GLOBAL_KEY_STATUS.RIGHT, 39) +
-//               onOffHighlight(GLOBAL_KEY_STATUS.DOWN, 40))
-// }
-
+// TODO: unused
 function onOffHighlight (status, text) {
   return  status ? chalk.green(convertKey(text)) : chalk.red(convertKey(text))
 }
@@ -123,12 +94,55 @@ function acceptInput (socketId) {
   // Check if the socket.id is in the list. We only allow two players.
   // TODO: may need to reevaluate this: do we need to check if the socket id matches the first two players
   // if we are checking against players that are allowed to play?
-  const canInput = PLAYERS[1] !== undefined &&
+  return PLAYERS[1] !== undefined &&
     (socketId === PLAYERS[0].id || socketId === PLAYERS[1].id) &&
     PLAYERS[getPlayersTurn()].id === socketId
+}
 
-  if (canInput) {
-    turnCounter++
+function handleInput (socketId, keyCode) {
+  if (!ALLOWED_KEY_CODES.includes(keyCode)) {
+    return
   }
-  return canInput
+
+  // DO we really need the isMovementAllowed function? This seems like it wouldn't be required
+  if (isMovementAllowed(socketId, keyCode)) {
+    PLAYERS.forEach((player, index) => {
+      console.log(`${index}:  X: ${chalk.red(player.x)}, Y: ${chalk.red(player.y)}`)
+    })
+    if (keyCode === LEFT) {
+      PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x--
+    } else if (keyCode === UP) {
+      PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y++
+    } else if (keyCode === RIGHT) {
+      PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x++
+    } else if (keyCode === DOWN) {
+      PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y--
+    }
+    turnCounter++
+  } else {
+    // turnCounter is not updated. Next input may come from the same user
+    return
+  }
+}
+
+function isMovementAllowed (socketId, keyCode) {
+  // hard-coded map
+  // TODO: allow selection of maps
+  const player = PLAYERS.find(player => {
+    return player.id === socketId
+  })
+
+  if (keyCode === LEFT && player.x !== 0) {
+    return true
+  } else if (keyCode === UP && player.y !== 0) {
+    return true
+  // TODO: LOL, so hacky. Jeez. Revist this later. We may want to make a map ringed with "false" and prevent
+  // movement into "false" squares
+  } else if (keyCode === RIGHT && player.x < BASIC_MAP[0].length) {
+    return true
+  } else if (keyCode === DOWN && player.y < BASIC_MAP.length) {
+    return true
+  } else {
+    return false
+  }
 }
