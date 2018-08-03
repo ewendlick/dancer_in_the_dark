@@ -4,6 +4,10 @@ const io = require('socket.io')(http)
 const chalk = require('chalk')
 const port = process.env.PORT || 3000
 
+const map = require('./maps/map')
+
+
+
 let PLAYERS = []
 let ALLOWED_PLAYERS = [0, 1] // change to a number, ALLOWED_PLAYER_COUNT
 let getPlayersTurn = () => { return ALLOWED_PLAYERS[turnCounter % ALLOWED_PLAYERS.length] }
@@ -32,6 +36,8 @@ const BASIC_MAP = [
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html')
 })
+app.use(express.static('static'))
+
 
 io.on('connection', socket => {
   console.log(chalk.blue('〇 A user connected with socket ID' + socket.id))
@@ -52,6 +58,7 @@ io.on('connection', (socket) => {
   io.emit('players', PLAYERS)
 
   socket.on('keys pressed locally', (msg) => {
+    console.log('keypress')
     if (acceptInput(socket.id)) {
       handleInput(socket.id, msg)
       console.log(`Accepted input for: ${socket.id}`)

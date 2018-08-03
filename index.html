@@ -41,77 +41,15 @@
         // capture onKeyDown and onKeyUp
         $('body').on('keydown', function(key) {
           // TODO: there is no reason to check if this is held now
-          processKeyDown(key.keyCode)
+          // processKeyDown(key.keyCode)
+          emitKeyDown(key.keyCode)
         })
-
-        // $('body').on('keyup', function(key) {
-        //   processKeyUp(key.keyCode)
-        // })
-
-        function processKeyDown(keyCode) {
-          // TODO: clean this up and make it more general. This is too much code
-          switch (keyCode) {
-            case KEY.LEFT:
-              if (!HELD.LEFT) {
-                emitKeyDown(KEY.LEFT)
-                HELD.LEFT = true
-              }
-              break
-            case KEY.UP:
-              if (!HELD.UP) {
-                emitKeyDown(KEY.UP)
-                HELD.UP = true
-                break
-              }
-            case KEY.RIGHT:
-              if (!HELD.RIGHT) {
-                emitKeyDown(KEY.RIGHT)
-                HELD.RIGHT = true
-                break
-              }
-            case KEY.DOWN:
-              if (!HELD.DOWN) {
-                emitKeyDown(KEY.DOWN)
-                HELD.DOWN = true
-                break
-              }
-          }
-        }
 
         function emitKeyDown(keyCode) {
           if (ALLOWED_KEYCODES.includes(keyCode)) {
             socket.emit('keys pressed locally', keyCode);
           }
         }
-
-        // function processKeyUp(keyCode) {
-        //   switch (keyCode) {
-        //     case KEY.LEFT:
-        //       if (HELD.LEFT) {
-        //         emitKeyUp(KEY.LEFT)
-        //         HELD.LEFT = false
-        //       }
-        //       break
-        //     case KEY.UP:
-        //       if (HELD.UP) {
-        //         emitKeyUp(KEY.UP)
-        //         HELD.UP = false
-        //         break
-        //       }
-        //     case KEY.RIGHT:
-        //       if (HELD.RIGHT) {
-        //         emitKeyUp(KEY.RIGHT)
-        //         HELD.RIGHT = false
-        //         break
-        //       }
-        //     case KEY.DOWN:
-        //       if (HELD.DOWN) {
-        //         emitKeyUp(KEY.DOWN)
-        //         HELD.DOWN = false
-        //         break
-        //       }
-        //   }
-        // }
 
         function emitKeyUp(keyCode) {
           if (ALLOWED_KEYCODES.includes(keyCode)) {
