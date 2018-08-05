@@ -4,6 +4,8 @@ const io = require('socket.io')(http)
 const chalk = require('chalk')
 const port = process.env.PORT || 3000
 
+const express = require('express')
+
 const map = require('./maps/map')
 
 
@@ -26,12 +28,7 @@ const RIGHT = 39
 const DOWN = 40
 const ALLOWED_KEY_CODES = [LEFT, UP, RIGHT, DOWN]
 
-const BASIC_MAP = [
-  [true, true, true, true],
-  [true, true, false, true],
-  [true, true, true, true],
-  [true, true, true, true]
-]
+const BASIC_MAP = map.basic
 
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html')
@@ -49,8 +46,8 @@ io.on('connection', socket => {
 io.on('connection', (socket) => {
   // Create a user and give them a socket.id
   PLAYERS.push({ id: socket.id,
-                 x: 0,
-                 y: 0,
+                 x: 1,
+                 y: 1,
                  remainingArrows: 2 })
 
   io.emit('map', BASIC_MAP) // Fires for each page connection :/

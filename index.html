@@ -1,21 +1,17 @@
 <!doctype html>
 <html>
   <head>
-    <title>Socket.IO chat</title>
-    <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font: 13px Helvetica, Arial; }
-      form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
-      form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
-      form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
-      #messages { list-style-type: none; margin: 0; padding: 0; }
-      #messages li { padding: 5px 10px; }
-      #messages li:nth-child(odd) { background: #eee; }
-      #messages { margin-bottom: 40px }
-      #display { }
-    </style>
+    <title>Dancer in the Dark</title>
+    <!--We need a reset-->
+    <link rel="stylesheet" type="text/css" href="css/reset.css" />
+    <link rel="stylesheet" type="text/css" href="css/base.css" />
+    <link rel="stylesheet" type="text/css" href="css/constructions.css" />
+    <link rel="stylesheet" type="text/css" href="css/decorations.css" />
+    <link rel="stylesheet" type="text/css" href="css/humans.css" />
+    <style></style>
   </head>
   <body>
+    <!-- include these in the project -->
     <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script>
@@ -80,10 +76,10 @@
         function drawPlayer (playerId, x, y) {
           // TODO: classes, IDs, etc
           // TODO: less hacky garbage
-          const playerClass = `player${playerId + 1}`
+          const playerClass = `human_${playerId + 1}`
           console.log(`drawPlayer: x${x}, y${y}`)
           // TODO: something here is wrong
-          $('#map').find(`tr:eq(${y})`).find(`td:eq(${x})`).html(`<span class="${playerClass}">@</span>`)
+          $('#map').find(`tr:eq(${y})`).find(`td:eq(${x})`).html(`<div class="tile ${playerClass}"></div>`)
         }
 
         function arrayToHTMLTable (array) {
@@ -92,32 +88,24 @@
             array.forEach(row => {
               derp += '<tr>'
               row.forEach(columnItem => {
-                derp += `<td class="${columnItem ? 'accessible' : 'unaccessible'}"></td>`
+                derp += `<td class="wall ${cellClass(columnItem)}"></td>`
               })
               derp += '</tr>'
             })
           derp += '</table>'
           return derp
         }
+
+        function cellClass (cellCode) {
+          if (cellCode === ' ') {
+            return 'decoration_1'
+          }
+
+          return 'basic_' + ('─│└┌┐┘├┤┬┴┼?.'.indexOf(cellCode) + 1)
+        }
       });
     </script>
     <style>
-      .accessible {
-        height: 20px;
-        width: 20px;
-        background-color: #bbffff;
-      }
-      .unaccessible {
-        height: 20px;
-        width: 20px;
-        background-color: #ffbbff;
-      }
-      .player1 {
-        color: #333;
-      }
-      .player2 {
-        color: #fb0;
-      }
     </style>
   </body>
 </html>

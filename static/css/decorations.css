@@ -1,0 +1,16 @@
+/* switch to scss, but also probably want to move to Parcel */
+
+/* switch this out to call it "tile" */
+
+/*
+.floor {
+    height: 32px;
+    width: 32px;
+    background-color: #000;
+}
+*/
+
+/* floor */
+.decoration_1 {
+    background: url('/sprites/decorations.png') 0 0;
+}
