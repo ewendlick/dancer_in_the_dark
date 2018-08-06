@@ -24,7 +24,8 @@ module.exports = {
         '├──┘        │',
         '│           │',
         '└───────────┘',
-    ])
+    ]),
+    moveable: ' <>'
 };
 
 function to2DArray (map) {
