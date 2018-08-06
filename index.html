@@ -38,9 +38,7 @@
 
         socket.on('map', map => {
           // TODO: clean up, create viewport, cache these
-          if ($('#map').length === 0) {
-            $('body').append(arrayToHTMLTable(map))
-          }
+          $('#map-container').html(arrayToHTMLTable(map))
         });
 
         socket.on('players', players => {
@@ -54,12 +52,19 @@
           })
         })
 
+        socket.on('turn', turnText => {
+          $('#turn').html(turnText)
+        })
+
         function drawPlayer (playerId, x, y) {
           // TODO: classes, IDs, etc
           // TODO: less hacky garbage
           // const playerClass = `human_${playerId + 1}`
-          playerClass = '' // WORK
-
+          if (playerId === 0) {
+            playerClass = 'player1'
+          } else if (playerId === 1) {
+            playerClass = 'player2'
+          }
 
           $('#map').find(`tr:eq(${y})`).find(`td:eq(${x})`).html(`<div class="tile ${playerClass}"></div>`)
         }
@@ -95,6 +100,11 @@
       });
     </script>
     <style>
+    #page {
+      background: #fff;
+      width: 100%;
+      height: 100%;
+    }
     /* work */
     .tile {
       background-color: #efefef;
@@ -107,6 +117,19 @@
     .wall {
       background-color: #bbb;
     }
+
+    .player1 {
+      background-color: #eee;
+    }
+
+    .player2 {
+      background-color: #eeb;
+    }
     </style>
+    <div id="page">
+      <div id="map-container">
+      </div>
+      <div id="turn"></div>
+    </div>
   </body>
 </html>

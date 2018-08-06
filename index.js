@@ -15,13 +15,7 @@ let ALLOWED_PLAYERS = [0, 1] // change to a number, ALLOWED_PLAYER_COUNT
 let getPlayersTurn = () => { return ALLOWED_PLAYERS[turnCounter % ALLOWED_PLAYERS.length] }
 let turnCounter = 0
 
-const GLOBAL_KEY_STATUS = {
-  LEFT: false,
-  UP: false,
-  RIGHT: false,
-  DOWN: false
-}
-
+// TODO: Should this be redone?
 const LEFT = 37
 const UP = 38
 const RIGHT = 39
@@ -50,15 +44,17 @@ io.on('connection', (socket) => {
                  y: 1,
                  remainingArrows: 2 })
 
-  io.emit('map', BASIC_MAP) // Fires for each page connection :/
-  // TODO: need to look into how to handle this
+  // "Constructor"
+  io.emit('map', BASIC_MAP)
   io.emit('players', PLAYERS)
+  io.emit('turn', playersTurn())
 
   socket.on('client key down', (msg) => {
     if (acceptInput(socket.id)) {
       handleInput(socket.id, msg)
       console.log(chalk.green(`Accepted input from: ${socket.id}`))
       io.emit('players', PLAYERS)
+      io.emit('turn', playersTurn())
     } else {
       // Testing purposes
       console.log(chalk.red(`Rejected input from: ${socket.id}`))
@@ -77,10 +73,25 @@ http.listen(port, () => {
   console.log('Express is running and listening on *:' + port);
 })
 
-// TODO: unused
-// function onOffHighlight (status, text) {
-//   return  status ? chalk.green(convertKey(text)) : chalk.red(convertKey(text))
-// }
+// TODO: user names?
+// We are checking against socketId when we don't need to.
+function playersTurn () {
+  return `Player ${getPlayersTurn() + 1}'s turn`
+
+  // TODO: it would be nice if this said "your turn"
+  // const currentPlayerIndex = PLAYERS.findIndex(player => {
+  //   return player.id === socketId
+  // })
+  // const turn = getPlayersTurn()
+  // console.log('turn ' + turn + ' currentPlayerIndex ' + currentPlayerIndex)
+  // if (currentPlayerIndex === turn) {
+  //   console.log('a')
+  //   return 'Your turn'
+  // } else {
+  //   console.log('b')
+  //   return `Player ${turn + 1}'s turn`
+  // }
+}
 
 function acceptInput (socketId) {
   // Check if the socket.id is in the list. We only allow two players.
@@ -102,30 +113,24 @@ function handleInput(socketId, keyCode) {
   const player = PLAYERS.find(player => {
     return player.id === socketId
   })
-  console.log('current: y:' + player.y + ' x:' + player.x)
 
   if (keyCode === LEFT && moveable.includes(BASIC_MAP[player.y][player.x - 1])) {
     console.log('left')
     PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x--
     turnCounter++
-    // return true
   } else if (keyCode === UP && moveable.includes(BASIC_MAP[player.y - 1][player.x])) {
     console.log('up')
     PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y--
     turnCounter++
-    // return true
   } else if (keyCode === RIGHT && moveable.includes(BASIC_MAP[player.y][player.x + 1])) {
     console.log('right')
     PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x++
     turnCounter++
-    // return true
   } else if (keyCode === DOWN && moveable.includes(BASIC_MAP[player.y + 1][player.x])) {
     console.log('down')
     PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y++
     turnCounter++
-    // return true
   } else {
     // Do nothing. Do not update the turn counter
-    // return false
   }
 }
