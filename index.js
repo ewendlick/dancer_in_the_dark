@@ -4,10 +4,10 @@ const io = require('socket.io')(http)
 const chalk = require('chalk')
 const port = process.env.PORT || 3000
 
+// TODO: sort this out with 'app'
 const express = require('express')
 
 const map = require('./maps/map')
-
 
 
 let PLAYERS = []
@@ -54,14 +54,15 @@ io.on('connection', (socket) => {
   // TODO: need to look into how to handle this
   io.emit('players', PLAYERS)
 
-  socket.on('keys pressed locally', (msg) => {
-    console.log('keypress')
+  socket.on('client key down', (msg) => {
     if (acceptInput(socket.id)) {
       handleInput(socket.id, msg)
-      console.log(`Accepted input for: ${socket.id}`)
+      console.log(chalk.green(`Accepted input from: ${socket.id}`))
       io.emit('players', PLAYERS)
+    } else {
+      // Testing purposes
+      console.log(chalk.red(`Rejected input from: ${socket.id}`))
     }
-
   })
 
   socket.on('disconnect', () => {
@@ -73,13 +74,13 @@ io.on('connection', (socket) => {
 })
 
 http.listen(port, () => {
-  console.log('listening on *:' + port);
+  console.log('Express is running and listening on *:' + port);
 })
 
 // TODO: unused
-function onOffHighlight (status, text) {
-  return  status ? chalk.green(convertKey(text)) : chalk.red(convertKey(text))
-}
+// function onOffHighlight (status, text) {
+//   return  status ? chalk.green(convertKey(text)) : chalk.red(convertKey(text))
+// }
 
 function acceptInput (socketId) {
   // Check if the socket.id is in the list. We only allow two players.
@@ -90,55 +91,41 @@ function acceptInput (socketId) {
     PLAYERS[getPlayersTurn()].id === socketId
 }
 
-function handleInput (socketId, keyCode) {
+function handleInput(socketId, keyCode) {
   if (!ALLOWED_KEY_CODES.includes(keyCode)) {
     console.log('Keycode not allowed')
     return
   }
 
-  // DO we really need the isMovementAllowed function? This seems like it wouldn't be required
-  if (isMovementAllowed(socketId, keyCode)) {
-    if (keyCode === LEFT) {
-      PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x--
-    } else if (keyCode === UP) {
-      PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y--
-    } else if (keyCode === RIGHT) {
-      PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x++
-    } else if (keyCode === DOWN) {
-      PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y++
-    }
-    PLAYERS.forEach((player, index) => {
-      console.log(`${index}:  X: ${chalk.red(player.x)}, Y: ${chalk.red(player.y)}`)
-    })
-    turnCounter++
-  } else {
-    // turnCounter is not updated. Next input may come from the same user
-    return
-  }
-}
-
-function isMovementAllowed (socketId, keyCode) {
-  // hard-coded map
-  // TODO: allow selection of maps
+  const moveable = ' ><' // moveable squares
+  // TODO: implement movement impedement
   const player = PLAYERS.find(player => {
     return player.id === socketId
   })
+  console.log('current: y:' + player.y + ' x:' + player.x)
 
-  if (keyCode === LEFT && player.x !== 0) {
+  if (keyCode === LEFT && moveable.includes(BASIC_MAP[player.y][player.x - 1])) {
     console.log('left')
-    return true
-  } else if (keyCode === UP && player.y !== 0) {
+    PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x--
+    turnCounter++
+    // return true
+  } else if (keyCode === UP && moveable.includes(BASIC_MAP[player.y - 1][player.x])) {
     console.log('up')
-    return true
-  // TODO: LOL, so hacky. Jeez. Revist this later. We may want to make a map ringed with "false" and prevent
-  // movement into "false" squares
-  } else if (keyCode === RIGHT && player.x < BASIC_MAP[0].length) {
+    PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y--
+    turnCounter++
+    // return true
+  } else if (keyCode === RIGHT && moveable.includes(BASIC_MAP[player.y][player.x + 1])) {
     console.log('right')
-    return true
-  } else if (keyCode === DOWN && player.y < BASIC_MAP.length) {
+    PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x++
+    turnCounter++
+    // return true
+  } else if (keyCode === DOWN && moveable.includes(BASIC_MAP[player.y + 1][player.x])) {
     console.log('down')
-    return true
+    PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y++
+    turnCounter++
+    // return true
   } else {
-    return false
+    // Do nothing. Do not update the turn counter
+    // return false
   }
 }

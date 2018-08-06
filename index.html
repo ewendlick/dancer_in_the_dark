@@ -2,7 +2,6 @@
 <html>
   <head>
     <title>Dancer in the Dark</title>
-    <!--We need a reset-->
     <link rel="stylesheet" type="text/css" href="css/reset.css" />
     <link rel="stylesheet" type="text/css" href="css/base.css" />
     <link rel="stylesheet" type="text/css" href="css/constructions.css" />
@@ -25,31 +24,15 @@
           DOWN: 40
         }
 
-        const HELD = {
-          LEFT: false,
-          UP: false,
-          RIGHT: false,
-          DOWN: false
-        }
-
         const ALLOWED_KEYCODES = [KEY.LEFT, KEY.UP, KEY.RIGHT, KEY.DOWN];
 
-        // capture onKeyDown and onKeyUp
         $('body').on('keydown', function(key) {
-          // TODO: there is no reason to check if this is held now
-          // processKeyDown(key.keyCode)
           emitKeyDown(key.keyCode)
         })
 
         function emitKeyDown(keyCode) {
           if (ALLOWED_KEYCODES.includes(keyCode)) {
-            socket.emit('keys pressed locally', keyCode);
-          }
-        }
-
-        function emitKeyUp(keyCode) {
-          if (ALLOWED_KEYCODES.includes(keyCode)) {
-            socket.emit('keys unpressed locally', keyCode);
+            socket.emit('client key down', keyCode);
           }
         }
 
@@ -58,7 +41,6 @@
           if ($('#map').length === 0) {
             $('body').append(arrayToHTMLTable(map))
           }
-          // console.table(map)
         });
 
         socket.on('players', players => {
@@ -68,7 +50,6 @@
           $('#map').find('td').html('')
 
           players.forEach((player, playerId) => {
-            // console.log(player)
             drawPlayer(playerId, player.x, player.y)
           })
         })
@@ -76,9 +57,10 @@
         function drawPlayer (playerId, x, y) {
           // TODO: classes, IDs, etc
           // TODO: less hacky garbage
-          const playerClass = `human_${playerId + 1}`
-          console.log(`drawPlayer: x${x}, y${y}`)
-          // TODO: something here is wrong
+          // const playerClass = `human_${playerId + 1}`
+          playerClass = '' // WORK
+
+
           $('#map').find(`tr:eq(${y})`).find(`td:eq(${x})`).html(`<div class="tile ${playerClass}"></div>`)
         }
 
@@ -88,7 +70,7 @@
             array.forEach(row => {
               derp += '<tr>'
               row.forEach(columnItem => {
-                derp += `<td class="wall ${cellClass(columnItem)}"></td>`
+                derp += `<td class="tile ${cellClass(columnItem)}"></td>`
               })
               derp += '</tr>'
             })
@@ -97,8 +79,15 @@
         }
 
         function cellClass (cellCode) {
+          // TODO: for doing this at work
           if (cellCode === ' ') {
-            return 'decoration_1'
+            return 'floor'
+          } else {
+            return 'wall'
+          }
+
+          if (cellCode === ' ') {
+            return 'decoration_1' // floor
           }
 
           return 'basic_' + ('─│└┌┐┘├┤┬┴┼?.'.indexOf(cellCode) + 1)
@@ -106,6 +95,18 @@
       });
     </script>
     <style>
+    /* work */
+    .tile {
+      background-color: #efefef;
+    }
+
+    .floor {
+      background-color: #ddd;
+    }
+
+    .wall {
+      background-color: #bbb;
+    }
     </style>
   </body>
 </html>
