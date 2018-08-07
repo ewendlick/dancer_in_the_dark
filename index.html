@@ -2,7 +2,6 @@
 <html>
   <head>
     <title>Dancer in the Dark</title>
-    <!--We need a reset-->
     <link rel="stylesheet" type="text/css" href="css/reset.css" />
     <link rel="stylesheet" type="text/css" href="css/base.css" />
     <link rel="stylesheet" type="text/css" href="css/constructions.css" />
@@ -16,7 +15,9 @@
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script>
       $(function () {
-        const socket = io();
+        const isAtHome = false
+
+        const socket = io()
 
         const KEY = {
           LEFT: 37,
@@ -25,40 +26,25 @@
           DOWN: 40
         }
 
-        const HELD = {
-          LEFT: false,
-          UP: false,
-          RIGHT: false,
-          DOWN: false
-        }
-
         const ALLOWED_KEYCODES = [KEY.LEFT, KEY.UP, KEY.RIGHT, KEY.DOWN];
 
-        // capture onKeyDown and onKeyUp
         $('body').on('keydown', function(key) {
-          // TODO: there is no reason to check if this is held now
-          // processKeyDown(key.keyCode)
           emitKeyDown(key.keyCode)
+          if (ALLOWED_KEYCODES.includes(key.keyCode)) {
+            // Prevents page from moving around from arrow keys
+            return false
+          }
         })
 
         function emitKeyDown(keyCode) {
           if (ALLOWED_KEYCODES.includes(keyCode)) {
-            socket.emit('keys pressed locally', keyCode);
-          }
-        }
-
-        function emitKeyUp(keyCode) {
-          if (ALLOWED_KEYCODES.includes(keyCode)) {
-            socket.emit('keys unpressed locally', keyCode);
+            socket.emit('client key down', keyCode);
           }
         }
 
         socket.on('map', map => {
           // TODO: clean up, create viewport, cache these
-          if ($('#map').length === 0) {
-            $('body').append(arrayToHTMLTable(map))
-          }
-          // console.table(map)
+          $('#map-container').html(arrayToHTMLTable(map))
         });
 
         socket.on('players', players => {
@@ -68,17 +54,24 @@
           $('#map').find('td').html('')
 
           players.forEach((player, playerId) => {
-            // console.log(player)
             drawPlayer(playerId, player.x, player.y)
           })
+        })
+
+        socket.on('turn', turnText => {
+          $('#turn').html(turnText)
         })
 
         function drawPlayer (playerId, x, y) {
           // TODO: classes, IDs, etc
           // TODO: less hacky garbage
-          const playerClass = `human_${playerId + 1}`
-          console.log(`drawPlayer: x${x}, y${y}`)
-          // TODO: something here is wrong
+          // const playerClass = `human_${playerId + 1}`
+          if (playerId === 0) {
+            playerClass = 'player1'
+          } else if (playerId === 1) {
+            playerClass = 'player2'
+          }
+
           $('#map').find(`tr:eq(${y})`).find(`td:eq(${x})`).html(`<div class="tile ${playerClass}"></div>`)
         }
 
@@ -88,7 +81,7 @@
             array.forEach(row => {
               derp += '<tr>'
               row.forEach(columnItem => {
-                derp += `<td class="wall ${cellClass(columnItem)}"></td>`
+                derp += `<td class="tile ${cellClass(columnItem)}"></td>`
               })
               derp += '</tr>'
             })
@@ -96,16 +89,75 @@
           return derp
         }
 
-        function cellClass (cellCode) {
-          if (cellCode === ' ') {
-            return 'decoration_1'
-          }
+        // TODO: check a cookie for this value
+        // run this from the command line to turn on sprites
+        function home () {
+          isAtHome = true
+        }
 
-          return 'basic_' + ('─│└┌┐┘├┤┬┴┼?.'.indexOf(cellCode) + 1)
+        function cellClass (cellCode) {
+          // For developing where we don't want the sprites shown, tee hee
+          if (!isAtHome) {
+            if (cellCode === ' ') {
+              return 'floor'
+            } else if (cellCode === '0') {
+              return 'unknown'
+            } else if ('─│└┌┐┘├┤┬┴┼?.'.includes(cellCode)) {
+              return 'wall'
+            } else if ('^'.includes(cellCode)) {
+              return 'treasure'
+            }
+          } else {
+            if (cellCode === ' ') {
+              return 'decoration_1' // floor
+            } else if (cellCode === '0') {
+              return 'unknown'
+            }
+
+            return 'basic_' + ('─│└┌┐┘├┤┬┴┼?.'.indexOf(cellCode) + 1)
+          }
         }
       });
     </script>
     <style>
+    #page {
+      background: #fff;
+      width: 100%;
+      height: 100%;
+    }
+    /* work */
+    .tile {
+      background-color: #efefef;
+    }
+
+    .floor {
+      background-color: #ddd;
+    }
+
+    .wall {
+      background-color: #bbb;
+    }
+
+    .player1 {
+      background-color: #eee;
+    }
+
+    .player2 {
+      background-color: #eeb;
+    }
+
+    .tile.treasure {
+      background-color: #fb6;
+    }
+
+    .tile.unknown {
+      background-color: #333;
+    }
     </style>
+    <div id="page">
+      <div id="map-container">
+      </div>
+      <div id="turn"></div>
+    </div>
   </body>
 </html>
