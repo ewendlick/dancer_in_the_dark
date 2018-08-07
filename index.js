@@ -46,16 +46,18 @@ io.on('connection', (socket) => {
                  remainingArrows: 2 })
 
   // "Constructor"
-  io.emit('map', BASIC_MAP) // TODO: remove, only pass visible
+  // io.emit('map', BASIC_MAP) // TODO: remove, only pass visible
+  io.to(`${socket.id}`).emit('map', visibleMap(socket.id))
+  // TODO: only pass the players that are visible
   io.emit('players', PLAYERS)
   io.emit('turn', playersTurn())
-
-  visibleMap(socket.id) // TODO: TESTING
 
   socket.on('client key down', (msg) => {
     if (acceptInput(socket.id)) {
       handleInput(socket.id, msg)
       console.log(chalk.green(`Accepted input from: ${socket.id}`))
+      // https://socket.io/docs/emit-cheatsheet/
+      io.to(`${socket.id}`).emit('map', visibleMap(socket.id))
       io.emit('players', PLAYERS)
       io.emit('turn', playersTurn())
     } else {
@@ -76,22 +78,30 @@ http.listen(port, () => {
   console.log('Express is running and listening on *:' + port);
 })
 
+function thisPlayer (socketId) {
+  // return PLAYERS[PLAYERS.findIndex(player => player.id === socketId)]
+  return PLAYERS.find(player => player.id === socketId)
+}
+
+function thisPlayerIndex (socketId) {
+  return PLAYERS.findIndex(player => player.id === socketId)
+}
+
 function visibleMap (socketId) {
   const viewDistance = 3
-  const player = PLAYERS[PLAYERS.findIndex(player => player.id === socketId)]
+  const player = thisPlayer(socketId)
 
-  // TODO: check if there is a wall directly in front of them in a direction
+  // TODO: check if there is a wall directly in front of them in a direction and skip this logic if true
   const lookingPaths = lookPaths(DOWN, RIGHT, viewDistance).concat(
   lookPaths(RIGHT, UP, viewDistance)).concat(
   lookPaths(UP, LEFT, viewDistance)).concat(
   lookPaths(LEFT, DOWN, viewDistance))
 
-  console.log('PATHS FOR LOOKING')
-  console.log(lookingPaths)
   // Change the map to obscure any other vision
   let visibleMap = hider(player.x, player.y, BASIC_MAP, lookingPaths, viewDistance)
   console.log(visibleMap)
   // apply "sounds" to the map for other players?
+  return visibleMap
 }
 
 function lookPaths (direction, secondDirection, distance) {
@@ -162,7 +172,6 @@ function hider (playerX, playerY, map, paths, viewDistance) {
       }
     }
   }
-
 
   paths.forEach(path => {
     let x = playerX
@@ -240,9 +249,7 @@ function handleInput(socketId, keyCode) {
   }
 
   // TODO: implement movement impedement
-  const player = PLAYERS.find(player => {
-    return player.id === socketId
-  })
+  const player = thisPlayer(socketId)
 
   // TODO: move back out into its own function
   if (keyCode === LEFT && MOVEABLE_SQUARES.includes(BASIC_MAP[player.y][player.x - 1])) {
