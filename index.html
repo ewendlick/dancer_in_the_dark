@@ -15,7 +15,9 @@
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script>
       $(function () {
-        const socket = io();
+        const isAtHome = false
+
+        const socket = io()
 
         const KEY = {
           LEFT: 37,
@@ -28,6 +30,10 @@
 
         $('body').on('keydown', function(key) {
           emitKeyDown(key.keyCode)
+          if (ALLOWED_KEYCODES.includes(key.keyCode)) {
+            // Prevents page from moving around from arrow keys
+            return false
+          }
         })
 
         function emitKeyDown(keyCode) {
@@ -83,21 +89,33 @@
           return derp
         }
 
+        // TODO: check a cookie for this value
+        // run this from the command line to turn on sprites
+        function home () {
+          isAtHome = true
+        }
+
         function cellClass (cellCode) {
-          // TODO: for doing this at work
-          if (cellCode === ' ') {
-            return 'floor'
-          } else if (cellCode === '0') {
-            return 'unknown'
+          // For developing where we don't want the sprites shown, tee hee
+          if (!isAtHome) {
+            if (cellCode === ' ') {
+              return 'floor'
+            } else if (cellCode === '0') {
+              return 'unknown'
+            } else if ('─│└┌┐┘├┤┬┴┼?.'.includes(cellCode)) {
+              return 'wall'
+            } else if ('^'.includes(cellCode)) {
+              return 'treasure'
+            }
           } else {
-            return 'wall'
-          }
+            if (cellCode === ' ') {
+              return 'decoration_1' // floor
+            } else if (cellCode === '0') {
+              return 'unknown'
+            }
 
-          if (cellCode === ' ') {
-            return 'decoration_1' // floor
+            return 'basic_' + ('─│└┌┐┘├┤┬┴┼?.'.indexOf(cellCode) + 1)
           }
-
-          return 'basic_' + ('─│└┌┐┘├┤┬┴┼?.'.indexOf(cellCode) + 1)
         }
       });
     </script>
@@ -126,6 +144,10 @@
 
     .player2 {
       background-color: #eeb;
+    }
+
+    .tile.treasure {
+      background-color: #fb6;
     }
 
     .tile.unknown {

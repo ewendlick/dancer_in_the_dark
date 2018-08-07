@@ -40,7 +40,7 @@ module.exports = {
         '│           │',
         '└───────────┘',
     ]),
-    moveable: ' <>'
+    moveable: ' <>^' // TODO: combine floors and items
 };
 
 function to2DArray (map) {
