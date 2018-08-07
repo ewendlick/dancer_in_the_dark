@@ -89,7 +89,7 @@ function visibleMap (socketId) {
   console.log('PATHS FOR LOOKING')
   console.log(lookingPaths)
   // Change the map to obscure any other vision
-  let visibleMap = hider(player.x, player.y, BASIC_MAP, lookingPaths)
+  let visibleMap = hider(player.x, player.y, BASIC_MAP, lookingPaths, viewDistance)
   console.log(visibleMap)
   // apply "sounds" to the map for other players?
 }
@@ -129,6 +129,41 @@ function hider (playerX, playerY, map, paths, viewDistance) {
   // everything is hidden until a path reveals it
   let shownMap = [...Array(mapHeight)].map(columnItem => Array(mapWidth).fill('0'))
   shownMap[playerY][playerX] = BASIC_MAP[playerY][playerX]
+
+  // oh no, we need to explicitly check diagonals or rework the view system
+  // TODO: rework the view system to get diagonals in there. Maybe check for wall collisions on evens?
+  for (let diagonal = 0; diagonal < 4; diagonal++) {
+    let x = playerX
+    let y = playerY
+    for (let distance = 1; distance <= Math.floor(viewDistance / 2); distance++) {
+      // UP + LEFT
+      if (diagonal === 0) {
+        y--
+        x--
+      // RIGHT + UP
+      } else if (diagonal === 1) {
+        y--
+        x++
+      // DOWN + RIGHT
+      } else if (diagonal === 2) {
+        y++
+        x++
+      // LEFT + DOWN
+      } else if (diagonal === 3) {
+        y++
+        x--
+      }
+
+      if (MOVEABLE_SQUARES.includes(BASIC_MAP[y][x])) {
+        shownMap[y][x] = BASIC_MAP[y][x]
+      } else {
+        shownMap[y][x] = BASIC_MAP[y][x]
+        continue
+      }
+    }
+  }
+
+
   paths.forEach(path => {
     let x = playerX
     let y = playerY
@@ -137,6 +172,7 @@ function hider (playerX, playerY, map, paths, viewDistance) {
     // change this from forEach so we can break from it when hitting a wall
     for (index = 0; index < path.length; index++) {
       let direction = path[index]
+
       if (direction === LEFT && MOVEABLE_SQUARES.includes(BASIC_MAP[y][x - 1])) {
         shownMap[y][x - 1] = BASIC_MAP[y][x - 1]
         x--
