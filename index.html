@@ -87,6 +87,8 @@
           // TODO: for doing this at work
           if (cellCode === ' ') {
             return 'floor'
+          } else if (cellCode === '0') {
+            return 'unknown'
           } else {
             return 'wall'
           }
@@ -124,6 +126,10 @@
 
     .player2 {
       background-color: #eeb;
+    }
+
+    .tile.unknown {
+      background-color: #333;
     }
     </style>
     <div id="page">

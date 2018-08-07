@@ -46,19 +46,18 @@ io.on('connection', (socket) => {
                  remainingArrows: 2 })
 
   // "Constructor"
-  // io.emit('map', BASIC_MAP) // TODO: remove, only pass visible
   io.to(`${socket.id}`).emit('map', visibleMap(socket.id))
-  // TODO: only pass the players that are visible
-  io.emit('players', PLAYERS)
+  io.to(`${socket.id}`).emit('players', visiblePlayers(socket.id, visibleMap(socket.id)))
   io.emit('turn', playersTurn())
 
   socket.on('client key down', (msg) => {
     if (acceptInput(socket.id)) {
       handleInput(socket.id, msg)
       console.log(chalk.green(`Accepted input from: ${socket.id}`))
+      const currentVisibleMap = visibleMap(socket.id)
       // https://socket.io/docs/emit-cheatsheet/
-      io.to(`${socket.id}`).emit('map', visibleMap(socket.id))
-      io.emit('players', PLAYERS)
+      io.to(`${socket.id}`).emit('map', currentVisibleMap)
+      io.to(`${socket.id}`).emit('players', visiblePlayers(socket.id, currentVisibleMap))
       io.emit('turn', playersTurn())
     } else {
       // Testing purposes
@@ -97,11 +96,21 @@ function visibleMap (socketId) {
   lookPaths(UP, LEFT, viewDistance)).concat(
   lookPaths(LEFT, DOWN, viewDistance))
 
-  // Change the map to obscure any other vision
   let visibleMap = hider(player.x, player.y, BASIC_MAP, lookingPaths, viewDistance)
-  console.log(visibleMap)
   // apply "sounds" to the map for other players?
   return visibleMap
+}
+
+// TODO
+function seenMap (socketId) {
+  // create a binary map of "seen" tiles, OR it against the main map
+}
+
+function visiblePlayers (socketId, visibleMap) {
+  // If a player is on a square that is not 0, display them
+  return PLAYERS.filter(player => {
+    return visibleMap[player.y][player.x] !== 0
+  })
 }
 
 function lookPaths (direction, secondDirection, distance) {
@@ -131,7 +140,6 @@ function dec2bin (dec) {
 }
 
 function hider (playerX, playerY, map, paths, viewDistance) {
-  // TODO: Move out. Make a const
   const mapHeight = map.length
   const mapWidth = map[0].length
 
