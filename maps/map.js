@@ -16,6 +16,21 @@
 module.exports = {
     // TODO: should we even handle the pipes here? Probably easier just to set these to a material
     // and then display it differently
+    treasureHunt: to2DArray( [
+        '┌──────┬─────────────────────────┐',
+        '│      │       ┌┐                │',
+        '│ .  ──┤       └┘           ┌┐   │',
+        '│                   ┌┐      └┘ ──┤',
+        '├──┘                └┘           │',
+        '│         ┌┐                     │',
+        '│    ┌┐   └┘      ┌┐             │',
+        '│    └┘       │   └┘         ┌┐  │',
+        '│            ─┼──            └┘  │',
+        '│             │                  │',
+        '│                                │',
+        '│   ┌┐                           │',
+        '└───┴┴───────────────────────────┘',
+    ]),
     basic: to2DArray( [
         '┌──────┬────┐',
         '│      │    │',
