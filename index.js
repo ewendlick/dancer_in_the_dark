@@ -15,6 +15,8 @@ let ALLOWED_PLAYERS = [0, 1] // change to a number, ALLOWED_PLAYER_COUNT
 const getPlayersTurn = () => { return ALLOWED_PLAYERS[turnCounter % ALLOWED_PLAYERS.length] }
 let turnCounter = 0
 let isGameRunning = false
+let isTreasurePlaced = false
+let isTrapsPlaced = false
 
 // TODO: Should this be redone?
 const LEFT = 37
@@ -50,14 +52,27 @@ io.on('connection', (socket) => {
   PLAYERS.push({ id: socket.id,
                  x: 1,
                  y: 1,
-                 remainingArrows: 2,
-                 hasTreasure: false })
+                 inventory: {
+                   arrows: 2,
+                   treasure: 0
+                 },
+                 status: {
+                   stunned: 0 // turns until not stunned
+                 },
+                 seenMap: null // TODO: initialize this here to the size of the loaded map 
+              })
   isGameRunning = PLAYERS.length >= 2
 
+  // "Constructor"
   if (isGameRunning) {
-    // "Constructor"
+    if (!isTreasurePlaced) {
     // TODO: randomize the spawn distance
-    console.log(spawnAtDistance(1, 1, 10, '^'))
+      isTreasurePlaced = spawnAtDistance(1, 1, 10, '^')
+    }
+    if (!isTrapsPlaced) {
+      print2DArray(MAP) // To console
+      isTrapsPlaced = spawnOnRows(80, 2, '#')
+    }
     print2DArray(MAP) // To console
     io.to(`${socket.id}`).emit('map', visibleMap(socket.id))
     io.to(`${socket.id}`).emit('players', visiblePlayers(socket.id, visibleMap(socket.id)))
@@ -71,8 +86,10 @@ io.on('connection', (socket) => {
       handleInput(socket.id, msg)
       console.log(chalk.green(`Accepted input from: ${socket.id}`))
       const currentVisibleMap = visibleMap(socket.id)
+      // print2DArray(currentVisibleMap)
+      const map = seenMap(socket.id, currentVisibleMap)
       // https://socket.io/docs/emit-cheatsheet/
-      io.to(`${socket.id}`).emit('map', currentVisibleMap)
+      io.to(`${socket.id}`).emit('map', map)
       io.to(`${socket.id}`).emit('players', visiblePlayers(socket.id, currentVisibleMap))
       io.emit('turn', playersTurn())
     } else {
@@ -96,6 +113,8 @@ http.listen(port, () => {
   console.log('Express is running and listening on *:' + port);
 })
 
+// console
+// TODO: what sort of grouping should we use for things that are printed to the console?
 function print2DArray (map) {
   for (let index = 0; index < map.length; index++) {
     console.log(map[index].join(''))
@@ -125,6 +144,33 @@ function visibleMap (socketId) {
   return visibleMap
 }
 
+// What should this return? Should this update the player directly?
+function seenMap (socketId, visibleMap) {
+  console.log('0')
+  // add the visiblemap to the particular player's seenMap
+  // fog of war tiles are appended with.... what? '░'?
+  // update anything that is not '0' (hidden)
+  let seenMap = thisPlayer(socketId).seenMap
+  if (seenMap === null) {
+    console.log('1')
+    seenMap = [...Array(MAP_HEIGHT())].map(columnItem => Array(MAP_WIDTH()).fill('0'))
+  }
+  seenMap = seenMap.map((row, indexY) => {
+    return row.map((itemX, indexX) => {
+      if (visibleMap[indexY][indexX] !== '0') {
+        return visibleMap[indexY][indexX]
+      } else {
+        return itemX
+      }
+    })
+  })
+  print2DArray(seenMap)
+  // can I do thisPlayer(socketId).seenMap = seenMap ? Try this later
+  PLAYERS[thisPlayerIndex(socketId)].seenMap = seenMap
+  return seenMap
+}
+
+// console (pass map)
 function floorToWallPercentage () {
   let floor = 0
   let wall = 0
@@ -136,6 +182,60 @@ function floorToWallPercentage () {
   console.log(`FLOOR TILES: ${Math.round((floor / (floor+wall)) * 100)}%, WALL TILES ${Math.round((wall / (floor+wall)) * 100)}%`)
 }
 
+// map
+function spawnOnRows (targetPercentageY, targetNumberX, item = '#') {
+  // '#' is a trap
+  let yAttempted = 0
+  let ySucceeded = 0
+  let xAttempted = 0
+  let xSucceeded = 0
+  let isYUsed = false
+  let spawnOnRowResult = false
+  MAP.forEach((y, indexY) => {
+    yAttempted++
+    if (Math.random() * 100 < targetPercentageY) {
+      for (let spawnAttempt = 0; spawnAttempt < targetNumberX; spawnAttempt++) {
+        xAttempted++
+        spawnOnRowResult = spawnOnRow(indexY, item)
+        if (spawnOnRowResult) {
+          xSucceeded++
+        }
+        isYUsed = isYUsed || spawnOnRowResult
+      }
+      if (isYUsed) {
+        ySucceeded++
+      }
+      isYUsed = false
+    }
+  })
+  console.log(`Spawned ${item} on ${ySucceeded}/${yAttempted} rows. Target: ${xAttempted} Actual: ${xSucceeded}`)
+  return true
+}
+
+// map
+function spawnOnRow (rowY, item = '#') {
+  // '#' is a trap
+  // Find a point in the row and place if possible
+  const startX = Math.floor(Math.random() * MAP_WIDTH())
+  let index = startX + 1
+  while (index !== startX) {
+    if (index > MAP_WIDTH()) {
+      // wrap
+      index = 0
+    }
+    // Is not a wall or unplaceable?
+    // TODO: not hard coded, we need a system of wall (not moveable), floor (moveable), item (moveable)
+    // console.log(`x: ${point.x} y: ${point.y}`)
+    if (MAP[rowY][index] === ' ') {
+      MAP[rowY][index] = item
+      return true
+    }
+    index++
+  }
+  return false
+}
+
+// map
 function spawnAtDistance (startX, startY, targetDistance, item = '^') {
   // '^' is treasure
   let randomAttempts = 10
@@ -143,7 +243,10 @@ function spawnAtDistance (startX, startY, targetDistance, item = '^') {
     // create a random point that adds up to targetDistance, check the positive and negative x,y combinations and see if it is on the board on any of them
     let x = Math.round((Math.random() * targetDistance))
     let y = targetDistance - x
-    let testPoints = [{y: startY - y, x: startX - x}, {y: startY - y, x: startX + x}, {y: startY + y, x: startX - x}, {y: startY + y, x: startX + x}]
+    let testPoints = [{y: startY - y, x: startX - x},
+                      {y: startY - y, x: startX + x},
+                      {y: startY + y, x: startX - x},
+                      {y: startY + y, x: startX + x}]
 
     let pointCount = 4
     while (pointCount > 0) {
@@ -168,7 +271,8 @@ function spawnAtDistance (startX, startY, targetDistance, item = '^') {
   return false
 }
 
-// easy mode
+// TODO
+// map
 function spawnAt (x, y, item = '^') {
   // Does minimumDistance exceed map width and height? Just stick the item in the futhest corner, moving inwards diagonally for placement
 
@@ -182,9 +286,9 @@ function playerListen (socketId) {
 }
 
 // TODO
-function seenMap (socketId) {
-  // create a binary map of "seen" tiles, OR it against the main map
-}
+// function seenMap (socketId) {
+//   // create a binary map of "seen" tiles, OR it against the main map
+// }
 
 // TODO
 // TODO: does whatever is at the tile: teleporter, pick up an item, activate a trap...
@@ -226,6 +330,7 @@ function dec2bin (dec) {
 }
 
 function hider (playerX, playerY, map, paths, viewDistance) {
+  // TODO: replace these with those constant-like things
   const mapHeight = map.length
   const mapWidth = map[0].length
 
