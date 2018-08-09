@@ -9,13 +9,14 @@ const express = require('express')
 
 const map = require('./maps/map')
 const printOut = require('./lib/printOut')
+const players = require('./classes/Players')
+const PLAYERS = new players
 
-
-let PLAYERS = []
-let ALLOWED_PLAYERS = [0, 1] // change to a number, ALLOWED_PLAYER_COUNT
-const getPlayersTurn = () => { return ALLOWED_PLAYERS[turnCounter % ALLOWED_PLAYERS.length] }
-let turnCounter = 0
-let isGameRunning = false
+// let PLAYERS = []
+// let ALLOWED_PLAYERS = [0, 1] // change to a number, ALLOWED_PLAYER_COUNT
+// const getPlayersTurn = () => { return ALLOWED_PLAYERS[turnCounter % ALLOWED_PLAYERS.length] }
+// let turnCounter = 0
+// let isEnoughPlayers = false
 let isTreasurePlaced = false
 let isTrapsPlaced = false
 
@@ -32,6 +33,7 @@ let MAP = map.treasureHunt // should this be kept as const? We edit one y,x pair
 const MAP_HEIGHT = () => { return MAP.length }
 const MAP_WIDTH = () => { return MAP[0].length }
 const MOVEABLE_SQUARES = map.moveable
+const MAP_UNSEEN = [...Array(MAP_HEIGHT())].map(columnItem => Array(MAP_WIDTH()).fill('0'))
 
 printOut.floorToWallPercentage(MAP)
 
@@ -50,22 +52,23 @@ io.on('connection', socket => {
 
 io.on('connection', (socket) => {
   // Create a user and give them a socket.id
-  PLAYERS.push({ id: socket.id,
-                 x: 1,
-                 y: 1,
-                 inventory: {
-                   arrows: 2,
-                   treasure: 0
-                 },
-                 status: {
-                   stunned: 0 // turns until not stunned
-                 },
-                 seenMap: null // TODO: initialize this here to the size of the loaded map
-              })
-  isGameRunning = PLAYERS.length >= 2
+  // PLAYERS.push({ id: socket.id,
+  //                x: 1,
+  //                y: 1,
+  //                inventory: {
+  //                  arrows: 2,
+  //                  treasure: 0
+  //                },
+  //                status: {
+  //                  stunned: 0 // turns until not stunned
+  //                },
+  //                seenMap: null // TODO: initialize this here to the size of the loaded map
+  //             })
+  PLAYERS.addPlayer(socket.id, MAP_UNSEEN)
+  // isEnoughPlayers = PLAYERS.length >= 2
 
   // "Constructor"
-  if (isGameRunning) {
+  if (PLAYERS.isEnoughPlayers) {
     if (!isTreasurePlaced) {
     // TODO: randomize the spawn distance
       isTreasurePlaced = spawnAtDistance(1, 1, 10, '^')
@@ -76,23 +79,25 @@ io.on('connection', (socket) => {
     }
     printOut.humanReadableMap(MAP)
     io.to(`${socket.id}`).emit('map', visibleMap(socket.id))
-    io.to(`${socket.id}`).emit('players', visiblePlayers(socket.id, visibleMap(socket.id)))
-    io.emit('turn', playersTurn())
+    io.to(`${socket.id}`).emit('players', PLAYERS.visiblePlayers(socket.id, visibleMap(socket.id)))
+    io.emit('turn', PLAYERS.playersTurn())
   } else {
     io.emit('turn', 'Waiting for more players')
   }
 
   socket.on('client key down', (msg) => {
-    if (acceptInput(socket.id)) {
+    if (PLAYERS.acceptInput(socket.id)) {
       handleInput(socket.id, msg)
       console.log(chalk.green(`Accepted input from: ${socket.id}`))
       const currentVisibleMap = visibleMap(socket.id)
-      const map = seenMap(socket.id, currentVisibleMap)
+      console.log('----------')
+      const map = PLAYERS.updateSeenMap(socket.id, currentVisibleMap)
+      console.log('1----------')
       // https://socket.io/docs/emit-cheatsheet/
       io.to(`${socket.id}`).emit('map', map)
       // TODO: need to emit the player positions based on visibility to each player.
-      io.to(`${socket.id}`).emit('players', visiblePlayers(socket.id, currentVisibleMap))
-      io.emit('turn', playersTurn())
+      io.to(`${socket.id}`).emit('players', PLAYERS.visiblePlayers(socket.id, currentVisibleMap))
+      io.emit('turn', PLAYERS.playersTurn())
     } else {
       // Testing purposes
       console.log(chalk.red(`Rejected input from: ${socket.id} (Not their turn/Insufficient players)`))
@@ -100,12 +105,13 @@ io.on('connection', (socket) => {
   })
 
   socket.on('disconnect', () => {
-    PLAYERS = PLAYERS.filter(player => {
-      return player.id !== socket.id
-    })
+    PLAYERS.removePlayer(socket.id)
+    // PLAYERS = PLAYERS.filter(player => {
+    //   return player.id !== socket.id
+    // })
     // TODO: handle some sort of connection queue
     // TODO: restart the game if one of the original players leaves
-    isGameRunning = PLAYERS.length >= 2
+    // isEnoughPlayers = PLAYERS.length >= 2
     console.log(chalk.red(PLAYERS.length + ' players'))
   })
 })
@@ -115,17 +121,17 @@ http.listen(port, () => {
 })
 
 // TODO: need to start thinking about a class handling all players
-function thisPlayer (socketId) {
-  return PLAYERS.find(player => player.id === socketId)
-}
-
-function thisPlayerIndex (socketId) {
-  return PLAYERS.findIndex(player => player.id === socketId)
-}
+// function thisPlayer (socketId) {
+//   return PLAYERS.find(player => player.id === socketId)
+// }
+//
+// function thisPlayerIndex (socketId) {
+//   return PLAYERS.findIndex(player => player.id === socketId)
+// }
 
 function visibleMap (socketId) {
   const viewDistance = 3
-  const player = thisPlayer(socketId)
+  const player = PLAYERS.thisPlayer(socketId)
 
   // TODO: check if there is a wall directly in front of them in a direction and skip this logic if true
   const lookingPaths = lookPaths(DOWN, RIGHT, viewDistance).concat(
@@ -139,30 +145,31 @@ function visibleMap (socketId) {
 }
 
 // What should this return? Should this update the player directly?
-function seenMap (socketId, visibleMap) {
-  console.log('0')
-  // add the visiblemap to the particular player's seenMap
-  // fog of war tiles are appended with.... what? '░'?
-  // update anything that is not '0' (hidden)
-  let seenMap = thisPlayer(socketId).seenMap
-  if (seenMap === null) {
-    console.log('1')
-    seenMap = [...Array(MAP_HEIGHT())].map(columnItem => Array(MAP_WIDTH()).fill('0'))
-  }
-  seenMap = seenMap.map((row, indexY) => {
-    return row.map((itemX, indexX) => {
-      if (visibleMap[indexY][indexX] !== '0') {
-        return visibleMap[indexY][indexX]
-      } else {
-        return itemX
-      }
-    })
-  })
-  printOut.humanReadableMap(seenMap)
-  // can I do thisPlayer(socketId).seenMap = seenMap ? Try this later
-  PLAYERS[thisPlayerIndex(socketId)].seenMap = seenMap
-  return seenMap
-}
+// function seenMap (socketId, visibleMap) {
+//   console.log('0')
+//   // add the visiblemap to the particular player's seenMap
+//   // fog of war tiles are appended with.... what? '░'?
+//   // update anything that is not '0' (hidden)
+//   let seenMap = PLAYERS.thisPlayer(socketId).seenMap
+//   if (seenMap === null) {
+//     console.log('1')
+//     seenMap = [...Array(MAP_HEIGHT())].map(columnItem => Array(MAP_WIDTH()).fill('0'))
+//   }
+//   seenMap = seenMap.map((row, indexY) => {
+//     return row.map((itemX, indexX) => {
+//       if (visibleMap[indexY][indexX] !== '0') {
+//         return visibleMap[indexY][indexX]
+//       } else {
+//         return itemX
+//       }
+//     })
+//   })
+//   printOut.humanReadableMap(seenMap)
+//   // can I do thisPlayer(socketId).seenMap = seenMap ? Try this later
+//   // TODO: need to hook this up to the player class
+//   PLAYERS[thisPlayerIndex(socketId)].seenMap = seenMap
+//   return seenMap
+// }
 
 // map
 function spawnOnRows (targetPercentageY, targetNumberX, item = '#') {
@@ -262,14 +269,9 @@ function spawnAt (x, y, item = '^') {
 
 // TODO
 // TODO: functions for each of the player's possible actions
-function playerListen (socketId) {
-  // Skips the player's movement turn, listens for other players.
-  // Returns a rough direction
-}
-
-// TODO
-// function seenMap (socketId) {
-//   // create a binary map of "seen" tiles, OR it against the main map
+// function playerListen (socketId) {
+//   // Skips the player's movement turn, listens for other players.
+//   // Returns a rough direction
 // }
 
 // TODO
@@ -278,12 +280,12 @@ function resolveTile (socketId) {
 
 }
 
-function visiblePlayers (socketId, visibleMap) {
-  // If a player is on a square that is not 0, display them
-  return PLAYERS.filter(player => {
-    return visibleMap[player.y][player.x] !== 0
-  })
-}
+// function visiblePlayers (socketId, visibleMap) {
+//   // If a player is on a square that is not 0, display them
+//   return PLAYERS.filter(player => {
+//     return visibleMap[player.y][player.x] !== 0
+//   })
+// }
 
 function lookPaths (direction, secondDirection, distance) {
   // All paths to look in one direction (UP, RIGHT, DOWN, LEFT) based on a quadrant (e.g. UP & UPPER-LEFT)
@@ -396,33 +398,34 @@ function hider (playerX, playerY, map, paths, viewDistance) {
 
 // TODO: user names?
 // We are checking against socketId when we don't need to.
-function playersTurn () {
-  return `Player ${getPlayersTurn() + 1}'s turn`
+// function playersTurn () {
+//   return `Player ${getPlayersTurn() + 1}'s turn`
+// 
+//   // TODO: it would be nice if this said "your turn"
+//   // const currentPlayerIndex = PLAYERS.findIndex(player => {
+//   //   return player.id === socketId
+//   // })
+//   // const turn = getPlayersTurn()
+//   // console.log('turn ' + turn + ' currentPlayerIndex ' + currentPlayerIndex)
+//   // if (currentPlayerIndex === turn) {
+//   //   console.log('a')
+//   //   return 'Your turn'
+//   // } else {
+//   //   console.log('b')
+//   //   return `Player ${turn + 1}'s turn`
+//   // }
+// }
 
-  // TODO: it would be nice if this said "your turn"
-  // const currentPlayerIndex = PLAYERS.findIndex(player => {
-  //   return player.id === socketId
-  // })
-  // const turn = getPlayersTurn()
-  // console.log('turn ' + turn + ' currentPlayerIndex ' + currentPlayerIndex)
-  // if (currentPlayerIndex === turn) {
-  //   console.log('a')
-  //   return 'Your turn'
-  // } else {
-  //   console.log('b')
-  //   return `Player ${turn + 1}'s turn`
-  // }
-}
+// function acceptInput (socketId) {
+//   // Check if the socket.id is in the list. We only allow two players.
+//   // TODO: may need to reevaluate this: do we need to check if the socket id matches the first two players
+//   // if we are checking against players that are allowed to play?
+//   return PLAYERS[1] !== undefined &&
+//     (socketId === PLAYERS[0].id || socketId === PLAYERS[1].id) &&
+//     PLAYERS[getPlayersTurn()].id === socketId
+// }
 
-function acceptInput (socketId) {
-  // Check if the socket.id is in the list. We only allow two players.
-  // TODO: may need to reevaluate this: do we need to check if the socket id matches the first two players
-  // if we are checking against players that are allowed to play?
-  return PLAYERS[1] !== undefined &&
-    (socketId === PLAYERS[0].id || socketId === PLAYERS[1].id) &&
-    PLAYERS[getPlayersTurn()].id === socketId
-}
-
+// TODO: hmmm, think about the turncounter here
 function handleInput(socketId, keyCode) {
   if (!ALLOWED_KEY_CODES.includes(keyCode)) {
     console.log('Keycode not allowed')
@@ -430,26 +433,30 @@ function handleInput(socketId, keyCode) {
   }
 
   // TODO: implement movement impedement
-  const player = thisPlayer(socketId)
+  const player = PLAYERS.thisPlayer(socketId)
 
   // TODO: move back out into its own function
   if (keyCode === LEFT && MOVEABLE_SQUARES.includes(MAP[player.y][player.x - 1])) {
     console.log('left')
-    PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x--
-    turnCounter++
+    PLAYERS.setRelativePosition(socketId, -1, 0)
+    // PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x--
+    PLAYERS.turnDone()
   } else if (keyCode === UP && MOVEABLE_SQUARES.includes(MAP[player.y - 1][player.x])) {
     console.log('up')
-    PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y--
-    turnCounter++
+    PLAYERS.setRelativePosition(socketId, 0, -1)
+    // PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y--
+    PLAYERS.turnDone()
   } else if (keyCode === RIGHT && MOVEABLE_SQUARES.includes(MAP[player.y][player.x + 1])) {
     console.log('right')
-    PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x++
-    turnCounter++
+    PLAYERS.setRelativePosition(socketId, 1, 0)
+    // PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x++
+    PLAYERS.turnDone()
   } else if (keyCode === DOWN && MOVEABLE_SQUARES.includes(MAP[player.y + 1][player.x])) {
     console.log('down')
-    PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y++
-    turnCounter++
+    PLAYERS.setRelativePosition(socketId, 0, 1)
+    // PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y++
+    PLAYERS.turnDone()
   } else {
-    // Do nothing. Do not update the turn counter
+    // Do nothing. Do not end the player's turn
   }
 }
