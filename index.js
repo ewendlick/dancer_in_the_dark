@@ -12,11 +12,6 @@ const printOut = require('./lib/printOut')
 const players = require('./classes/Players')
 const PLAYERS = new players
 
-// let PLAYERS = []
-// let ALLOWED_PLAYERS = [0, 1] // change to a number, ALLOWED_PLAYER_COUNT
-// const getPlayersTurn = () => { return ALLOWED_PLAYERS[turnCounter % ALLOWED_PLAYERS.length] }
-// let turnCounter = 0
-// let isEnoughPlayers = false
 let isTreasurePlaced = false
 let isTrapsPlaced = false
 
@@ -51,21 +46,7 @@ io.on('connection', socket => {
 })
 
 io.on('connection', (socket) => {
-  // Create a user and give them a socket.id
-  // PLAYERS.push({ id: socket.id,
-  //                x: 1,
-  //                y: 1,
-  //                inventory: {
-  //                  arrows: 2,
-  //                  treasure: 0
-  //                },
-  //                status: {
-  //                  stunned: 0 // turns until not stunned
-  //                },
-  //                seenMap: null // TODO: initialize this here to the size of the loaded map
-  //             })
   PLAYERS.addPlayer(socket.id, MAP_UNSEEN)
-  // isEnoughPlayers = PLAYERS.length >= 2
 
   // "Constructor"
   if (PLAYERS.isEnoughPlayers) {
@@ -90,9 +71,7 @@ io.on('connection', (socket) => {
       handleInput(socket.id, msg)
       console.log(chalk.green(`Accepted input from: ${socket.id}`))
       const currentVisibleMap = visibleMap(socket.id)
-      console.log('----------')
       const map = PLAYERS.updateSeenMap(socket.id, currentVisibleMap)
-      console.log('1----------')
       // https://socket.io/docs/emit-cheatsheet/
       io.to(`${socket.id}`).emit('map', map)
       // TODO: need to emit the player positions based on visibility to each player.
@@ -106,12 +85,6 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     PLAYERS.removePlayer(socket.id)
-    // PLAYERS = PLAYERS.filter(player => {
-    //   return player.id !== socket.id
-    // })
-    // TODO: handle some sort of connection queue
-    // TODO: restart the game if one of the original players leaves
-    // isEnoughPlayers = PLAYERS.length >= 2
     console.log(chalk.red(PLAYERS.length + ' players'))
   })
 })
@@ -119,15 +92,6 @@ io.on('connection', (socket) => {
 http.listen(port, () => {
   console.log('Express is running and listening on *:' + port);
 })
-
-// TODO: need to start thinking about a class handling all players
-// function thisPlayer (socketId) {
-//   return PLAYERS.find(player => player.id === socketId)
-// }
-//
-// function thisPlayerIndex (socketId) {
-//   return PLAYERS.findIndex(player => player.id === socketId)
-// }
 
 function visibleMap (socketId) {
   const viewDistance = 3
@@ -143,33 +107,6 @@ function visibleMap (socketId) {
   // apply "sounds" to the map for other players?
   return visibleMap
 }
-
-// What should this return? Should this update the player directly?
-// function seenMap (socketId, visibleMap) {
-//   console.log('0')
-//   // add the visiblemap to the particular player's seenMap
-//   // fog of war tiles are appended with.... what? '░'?
-//   // update anything that is not '0' (hidden)
-//   let seenMap = PLAYERS.thisPlayer(socketId).seenMap
-//   if (seenMap === null) {
-//     console.log('1')
-//     seenMap = [...Array(MAP_HEIGHT())].map(columnItem => Array(MAP_WIDTH()).fill('0'))
-//   }
-//   seenMap = seenMap.map((row, indexY) => {
-//     return row.map((itemX, indexX) => {
-//       if (visibleMap[indexY][indexX] !== '0') {
-//         return visibleMap[indexY][indexX]
-//       } else {
-//         return itemX
-//       }
-//     })
-//   })
-//   printOut.humanReadableMap(seenMap)
-//   // can I do thisPlayer(socketId).seenMap = seenMap ? Try this later
-//   // TODO: need to hook this up to the player class
-//   PLAYERS[thisPlayerIndex(socketId)].seenMap = seenMap
-//   return seenMap
-// }
 
 // map
 function spawnOnRows (targetPercentageY, targetNumberX, item = '#') {
@@ -280,13 +217,6 @@ function resolveTile (socketId) {
 
 }
 
-// function visiblePlayers (socketId, visibleMap) {
-//   // If a player is on a square that is not 0, display them
-//   return PLAYERS.filter(player => {
-//     return visibleMap[player.y][player.x] !== 0
-//   })
-// }
-
 function lookPaths (direction, secondDirection, distance) {
   // All paths to look in one direction (UP, RIGHT, DOWN, LEFT) based on a quadrant (e.g. UP & UPPER-LEFT)
   let resultPaths = []
@@ -396,36 +326,6 @@ function hider (playerX, playerY, map, paths, viewDistance) {
   return shownMap
 }
 
-// TODO: user names?
-// We are checking against socketId when we don't need to.
-// function playersTurn () {
-//   return `Player ${getPlayersTurn() + 1}'s turn`
-// 
-//   // TODO: it would be nice if this said "your turn"
-//   // const currentPlayerIndex = PLAYERS.findIndex(player => {
-//   //   return player.id === socketId
-//   // })
-//   // const turn = getPlayersTurn()
-//   // console.log('turn ' + turn + ' currentPlayerIndex ' + currentPlayerIndex)
-//   // if (currentPlayerIndex === turn) {
-//   //   console.log('a')
-//   //   return 'Your turn'
-//   // } else {
-//   //   console.log('b')
-//   //   return `Player ${turn + 1}'s turn`
-//   // }
-// }
-
-// function acceptInput (socketId) {
-//   // Check if the socket.id is in the list. We only allow two players.
-//   // TODO: may need to reevaluate this: do we need to check if the socket id matches the first two players
-//   // if we are checking against players that are allowed to play?
-//   return PLAYERS[1] !== undefined &&
-//     (socketId === PLAYERS[0].id || socketId === PLAYERS[1].id) &&
-//     PLAYERS[getPlayersTurn()].id === socketId
-// }
-
-// TODO: hmmm, think about the turncounter here
 function handleInput(socketId, keyCode) {
   if (!ALLOWED_KEY_CODES.includes(keyCode)) {
     console.log('Keycode not allowed')
@@ -439,22 +339,18 @@ function handleInput(socketId, keyCode) {
   if (keyCode === LEFT && MOVEABLE_SQUARES.includes(MAP[player.y][player.x - 1])) {
     console.log('left')
     PLAYERS.setRelativePosition(socketId, -1, 0)
-    // PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x--
     PLAYERS.turnDone()
   } else if (keyCode === UP && MOVEABLE_SQUARES.includes(MAP[player.y - 1][player.x])) {
     console.log('up')
     PLAYERS.setRelativePosition(socketId, 0, -1)
-    // PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y--
     PLAYERS.turnDone()
   } else if (keyCode === RIGHT && MOVEABLE_SQUARES.includes(MAP[player.y][player.x + 1])) {
     console.log('right')
     PLAYERS.setRelativePosition(socketId, 1, 0)
-    // PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x++
     PLAYERS.turnDone()
   } else if (keyCode === DOWN && MOVEABLE_SQUARES.includes(MAP[player.y + 1][player.x])) {
     console.log('down')
     PLAYERS.setRelativePosition(socketId, 0, 1)
-    // PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y++
     PLAYERS.turnDone()
   } else {
     // Do nothing. Do not end the player's turn
