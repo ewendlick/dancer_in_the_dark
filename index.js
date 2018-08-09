@@ -8,6 +8,7 @@ const port = process.env.PORT || 3000
 const express = require('express')
 
 const map = require('./maps/map')
+const printOut = require('./lib/printOut')
 
 
 let PLAYERS = []
@@ -32,7 +33,7 @@ const MAP_HEIGHT = () => { return MAP.length }
 const MAP_WIDTH = () => { return MAP[0].length }
 const MOVEABLE_SQUARES = map.moveable
 
-floorToWallPercentage()
+printOut.floorToWallPercentage(MAP)
 
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html')
@@ -59,7 +60,7 @@ io.on('connection', (socket) => {
                  status: {
                    stunned: 0 // turns until not stunned
                  },
-                 seenMap: null // TODO: initialize this here to the size of the loaded map 
+                 seenMap: null // TODO: initialize this here to the size of the loaded map
               })
   isGameRunning = PLAYERS.length >= 2
 
@@ -70,10 +71,10 @@ io.on('connection', (socket) => {
       isTreasurePlaced = spawnAtDistance(1, 1, 10, '^')
     }
     if (!isTrapsPlaced) {
-      print2DArray(MAP) // To console
+      printOut.humanReadableMap(MAP)
       isTrapsPlaced = spawnOnRows(80, 2, '#')
     }
-    print2DArray(MAP) // To console
+    printOut.humanReadableMap(MAP)
     io.to(`${socket.id}`).emit('map', visibleMap(socket.id))
     io.to(`${socket.id}`).emit('players', visiblePlayers(socket.id, visibleMap(socket.id)))
     io.emit('turn', playersTurn())
@@ -86,15 +87,15 @@ io.on('connection', (socket) => {
       handleInput(socket.id, msg)
       console.log(chalk.green(`Accepted input from: ${socket.id}`))
       const currentVisibleMap = visibleMap(socket.id)
-      // print2DArray(currentVisibleMap)
       const map = seenMap(socket.id, currentVisibleMap)
       // https://socket.io/docs/emit-cheatsheet/
       io.to(`${socket.id}`).emit('map', map)
+      // TODO: need to emit the player positions based on visibility to each player.
       io.to(`${socket.id}`).emit('players', visiblePlayers(socket.id, currentVisibleMap))
       io.emit('turn', playersTurn())
     } else {
       // Testing purposes
-      console.log(chalk.red(`Rejected input from: ${socket.id}`))
+      console.log(chalk.red(`Rejected input from: ${socket.id} (Not their turn/Insufficient players)`))
     }
   })
 
@@ -113,14 +114,7 @@ http.listen(port, () => {
   console.log('Express is running and listening on *:' + port);
 })
 
-// console
-// TODO: what sort of grouping should we use for things that are printed to the console?
-function print2DArray (map) {
-  for (let index = 0; index < map.length; index++) {
-    console.log(map[index].join(''))
-  }
-}
-
+// TODO: need to start thinking about a class handling all players
 function thisPlayer (socketId) {
   return PLAYERS.find(player => player.id === socketId)
 }
@@ -164,22 +158,10 @@ function seenMap (socketId, visibleMap) {
       }
     })
   })
-  print2DArray(seenMap)
+  printOut.humanReadableMap(seenMap)
   // can I do thisPlayer(socketId).seenMap = seenMap ? Try this later
   PLAYERS[thisPlayerIndex(socketId)].seenMap = seenMap
   return seenMap
-}
-
-// console (pass map)
-function floorToWallPercentage () {
-  let floor = 0
-  let wall = 0
-  MAP.forEach(row => {
-    row.forEach(columnItem => {
-      columnItem === ' ' ? floor++ : wall++
-    })
-  })
-  console.log(`FLOOR TILES: ${Math.round((floor / (floor+wall)) * 100)}%, WALL TILES ${Math.round((wall / (floor+wall)) * 100)}%`)
 }
 
 // map
