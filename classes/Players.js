@@ -1,16 +1,20 @@
 module.exports = class Players {
   constructor () {
-    this.PLAYERS = [] // TODO: this isn't a const. rename
+    this.players = [] // TODO: this isn't a const. rename
     this.ALLOWED_PLAYERS = [0, 1] // TODO: change this to an int
     this.turnCounter = 0
   }
 
-  getPlayersTurn () {
+  thisPlayersTurn () {
     return this.ALLOWED_PLAYERS[this.turnCounter % this.ALLOWED_PLAYERS.length]
   }
 
+  nextPlayersTurn () {
+    return this.ALLOWED_PLAYERS[(this.turnCounter + 1) % this.ALLOWED_PLAYERS.length]
+  }
+
   addPlayer (id, seenMap = null, x = 1, y = 1 ) {
-    this.PLAYERS.push({ id,
+    this.players.push({ id,
                         seenMap,
                         x,
                         y,
@@ -22,16 +26,10 @@ module.exports = class Players {
                           stunned: 0 // turns until not stunned
                         }
                      })
-    // this.id = id // socket.id
-    // this.x = x
-    // this.y = y
-    // this.seenMap
-    // this.inventory = { arrows: 2, treasure: 0 } // TODO: revisit this
-    // this.status = { stunned: 0 } // TODO: revisit this
   }
 
   removePlayer (socketId) {
-    this.PLAYERS = this.PLAYERS.filter(player => {
+    this.players = this.players.filter(player => {
       return player.id !== socketId
     })
   }
@@ -40,32 +38,25 @@ module.exports = class Players {
     // Check if the socket.id is in the list. We only allow two players.
     // TODO: may need to reevaluate this: do we need to check if the socket id matches the first two players
     // if we are checking against players that are allowed to play?
-    return this.PLAYERS[1] !== undefined &&
-      (socketId === this.PLAYERS[0].id || socketId === this.PLAYERS[1].id) &&
-      this.PLAYERS[this.getPlayersTurn()].id === socketId
+    return this.players[1] !== undefined &&
+      (socketId === this.players[0].id || socketId === this.players[1].id) &&
+      this.players[this.thisPlayersTurn()].id === socketId
   }
 
-  playersTurn () {
-    return `Player ${this.getPlayersTurn() + 1}'s turn`
-
-    // TODO: it would be nice if this said "your turn"
-    // const currentPlayerIndex = PLAYERS.findIndex(player => {
-    //   return player.id === socketId
-    // })
-    // const turn = getPlayersTurn()
-    // console.log('turn ' + turn + ' currentPlayerIndex ' + currentPlayerIndex)
-    // if (currentPlayerIndex === turn) {
-    //   console.log('a')
-    //   return 'Your turn'
-    // } else {
-    //   console.log('b')
-    //   return `Player ${turn + 1}'s turn`
-    // }
+  // TODO: would it make sense to store the socket.id of the player whose turn it is in here??
+  playersTurn (socketId) {
+    // Should this return a list of all of the connected players??
+    console.log(`${this.thisPlayerIndex(socketId)} and ${this.nextPlayersTurn()}`)
+    if (this.thisPlayerIndex(socketId) === this.nextPlayersTurn()) {
+      return `Your turn`
+    } else {
+      return `Player ${this.nextPlayersTurn() + 1}'s turn`
+    }
   }
 
   visiblePlayers (socketId, visibleMap) {
     // If a player is on a square that is not 0, display them
-    return this.PLAYERS.filter(player => {
+    return this.players.filter(player => {
       return visibleMap[player.y][player.x] !== 0
     })
   }
@@ -92,7 +83,7 @@ module.exports = class Players {
       })
     })
     // can I do thisPlayer(socketId).seenMap = seenMap ? Try this later
-    this.PLAYERS[this.thisPlayerIndex(socketId)].seenMap = seenMap
+    this.players[this.thisPlayerIndex(socketId)].seenMap = seenMap
     // TODO: Should another function be created to return this?
     // I am unsure about this all and wonder if I should just be returning
     // true/false and then setting up tests
@@ -103,16 +94,16 @@ module.exports = class Players {
     const player = this.thisPlayer(socketId)
     player.x = player.x + x
     player.y = player.y + y
-    this.PLAYERS[this.thisPlayerIndex(socketId)] = player
+    this.players[this.thisPlayerIndex(socketId)] = player
   }
 
   // TODO: change to targetPlayer? playerById? currentPlayer?
   thisPlayer (socketId) {
-    return this.PLAYERS.find(player => player.id === socketId)
+    return this.players.find(player => player.id === socketId)
   }
 
   thisPlayerIndex (socketId) {
-    return this.PLAYERS.findIndex(player => player.id === socketId)
+    return this.players.findIndex(player => player.id === socketId)
   }
 
   // // TODO
@@ -127,10 +118,10 @@ module.exports = class Players {
   }
 
   length () {
-    return this.PLAYERS.length
+    return this.players.length
   }
 
   isEnoughPlayers () {
-    return this.PLAYERS.length >= this.ALLOWED_PLAYERS.length
+    return this.players.length >= this.ALLOWED_PLAYERS.length
   }
 }

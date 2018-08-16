@@ -15,6 +15,9 @@ const PLAYERS = new players
 let isTreasurePlaced = false
 let isTrapsPlaced = false
 
+// TODO: map class
+// TODO: consider an input class. What would go in there?
+
 // TODO: Should this be redone?
 const LEFT = 37
 const UP = 38
@@ -60,8 +63,9 @@ io.on('connection', (socket) => {
     }
     printOut.humanReadableMap(MAP)
     io.to(`${socket.id}`).emit('map', visibleMap(socket.id))
+    // TODO: need to loop and display visible players to each player on the field after each move
     io.to(`${socket.id}`).emit('players', PLAYERS.visiblePlayers(socket.id, visibleMap(socket.id)))
-    io.emit('turn', PLAYERS.playersTurn())
+    io.emit('turn', PLAYERS.playersTurn(socket.id))
   } else {
     io.emit('turn', 'Waiting for more players')
   }
@@ -76,7 +80,7 @@ io.on('connection', (socket) => {
       io.to(`${socket.id}`).emit('map', map)
       // TODO: need to emit the player positions based on visibility to each player.
       io.to(`${socket.id}`).emit('players', PLAYERS.visiblePlayers(socket.id, currentVisibleMap))
-      io.emit('turn', PLAYERS.playersTurn())
+      io.emit('turn', PLAYERS.playersTurn(socket.id))
     } else {
       // Testing purposes
       console.log(chalk.red(`Rejected input from: ${socket.id} (Not their turn/Insufficient players)`))
