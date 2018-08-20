@@ -150,6 +150,8 @@
               return 'wall'
             } else if ('^'.includes(cellCode)) {
               return 'treasure'
+            } else if ('#'.includes(cellCode)) {
+              return 'trap'
             }
           } else {
             if (cellCode === ' ') {
@@ -192,6 +194,10 @@
 
     .tile.treasure {
       background-color: #fb6;
+    }
+
+    .tile.trap {
+      background-color: #ffd1d1;
     }
 
     .tile.unknown {

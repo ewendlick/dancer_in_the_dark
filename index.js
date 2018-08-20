@@ -19,6 +19,7 @@ let isTrapsPlaced = false
 // TODO: consider an input class. What would go in there?
 
 // TODO: Should this be redone?
+// TODO: movement class??
 const LEFT = 37
 const UP = 38
 const RIGHT = 39
@@ -75,8 +76,6 @@ io.on('connection', (socket) => {
     })
 
     // TODO: figure out how to display that there are not enough players. Make it another emit??
-    // TODO: should this emit the next player's turn??
-    // io.emit('turn', PLAYERS.playersTurn(socket.id))
     io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
   }
 
@@ -91,7 +90,6 @@ io.on('connection', (socket) => {
       PLAYERS.playersPublicInfo().forEach(player => {
         io.to(`${player.id}`).emit('players', PLAYERS.visiblePlayers(player.id, visibleMap(player.id)))
       })
-      // io.emit('turn', PLAYERS.playersTurn(socket.id))
       io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
     } else {
       // Testing purposes
