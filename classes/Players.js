@@ -14,6 +14,7 @@ module.exports = class Players {
   }
 
   addPlayer (id, seenMap = null, x = 1, y = 1 ) {
+    // TODO: add a name (generated, or passed?), possibly rename "id" to "socketId"
     this.players.push({ id,
                         seenMap,
                         x,
@@ -45,13 +46,21 @@ module.exports = class Players {
 
   // TODO: would it make sense to store the socket.id of the player whose turn it is in here??
   playersTurn (socketId) {
-    // Should this return a list of all of the connected players??
-    console.log(`${this.thisPlayerIndex(socketId)} and ${this.nextPlayersTurn()}`)
-    if (this.thisPlayerIndex(socketId) === this.nextPlayersTurn()) {
-      return `Your turn`
-    } else {
-      return `Player ${this.nextPlayersTurn() + 1}'s turn`
-    }
+    return this.thisPlayerIndex(socketId)
+  }
+
+  // TODO: come up with a name when these should be plural. I have "playersTurn" which is a possessive "player's" :/
+  playersNames () {
+    return this.players.map(player => {
+      return player.id
+    })
+  }
+
+  // TODO: rename? selfId? thisPlayerId?
+  playerId (socketId) {
+    return this.players.find(player => {
+      return player.id === socketId
+    }).id
   }
 
   visiblePlayers (socketId, visibleMap) {
@@ -117,7 +126,8 @@ module.exports = class Players {
     this.turnCounter++
   }
 
-  length () {
+  // TODO: cannot name this length since it overwrites
+  playerCount () {
     return this.players.length
   }
 

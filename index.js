@@ -50,6 +50,8 @@ io.on('connection', socket => {
 
 io.on('connection', (socket) => {
   PLAYERS.addPlayer(socket.id, MAP_UNSEEN)
+  io.emit('playerNames', PLAYERS.playersNames())
+  io.to(`${socket.id}`).emit('playerId', PLAYERS.playerId(socket.id))
 
   // "Constructor"
   if (PLAYERS.isEnoughPlayers) {
@@ -64,10 +66,15 @@ io.on('connection', (socket) => {
     printOut.humanReadableMap(MAP)
     io.to(`${socket.id}`).emit('map', visibleMap(socket.id))
     // TODO: need to loop and display visible players to each player on the field after each move
-    io.to(`${socket.id}`).emit('players', PLAYERS.visiblePlayers(socket.id, visibleMap(socket.id)))
+    // io.to(`${socket.id}`).emit('players', PLAYERS.visiblePlayers(socket.id, visibleMap(socket.id)))
+    PLAYERS.playersNames().forEach(playerId => {
+      io.to(`${playerId}`).emit('players', PLAYERS.visiblePlayers(playerId, visibleMap(playerId)))
+    })
+
+    // TODO: figure out how to display that there are not enough players. Make it another emit??
     io.emit('turn', PLAYERS.playersTurn(socket.id))
   } else {
-    io.emit('turn', 'Waiting for more players')
+    // io.emit('turn', 'Waiting for more players')
   }
 
   socket.on('client key down', (msg) => {
@@ -78,8 +85,10 @@ io.on('connection', (socket) => {
       const map = PLAYERS.updateSeenMap(socket.id, currentVisibleMap)
       // https://socket.io/docs/emit-cheatsheet/
       io.to(`${socket.id}`).emit('map', map)
-      // TODO: need to emit the player positions based on visibility to each player.
-      io.to(`${socket.id}`).emit('players', PLAYERS.visiblePlayers(socket.id, currentVisibleMap))
+      PLAYERS.playersNames().forEach(playerId => {
+        io.to(`${playerId}`).emit('players', PLAYERS.visiblePlayers(playerId, visibleMap(playerId)))
+      })
+      // io.to(`${socket.id}`).emit('players', PLAYERS.visiblePlayers(socket.id, currentVisibleMap))
       io.emit('turn', PLAYERS.playersTurn(socket.id))
     } else {
       // Testing purposes
@@ -89,6 +98,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     PLAYERS.removePlayer(socket.id)
+    io.emit('playerNames', PLAYERS.playersNames())
     console.log(chalk.red(PLAYERS.length + ' players'))
   })
 })
