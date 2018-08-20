@@ -18,16 +18,17 @@ module.exports = class Players {
   addPlayer (id, seenMap = null, x = 1, y = 1 ) {
     // TODO: possibly rename "id" to "socketId"
     this.players.push({ id,
-                        name: this.generateRandomName(),
+                        name: random.name(),
                         seenMap,
                         x,
                         y,
+                        movesRemaining: 0,
                         inventory: {
                           arrows: 2, // (umimplemented)
                           treasure: 0 // (unimplemented)
                         },
                         status: {
-                          speed: 3, // moves per turn (unimplemented)
+                          speed: 3,
                           stunned: 0 // turns until not stunned (unimplemented)
                         }
                      })
@@ -136,9 +137,40 @@ module.exports = class Players {
   //   // Returns a rough direction
   // }
 
-  generateRandomName (isHero = true) {
-    return random.name(isHero)
-  }
+  // A little pointless to have this as a function at the moment
+  // generateRandomName (isHero = true) {
+  //   return random.name(isHero)
+  // }
+
+  // Assign the number of moves remaining based on "speed" attribute
+  // turnStart (socketId) {
+  //   players = players.map(player => {
+  //     if (player.id === socketId) {
+  //       player.movesRemaining = player.status.speed
+  //     }
+  //     // TODO: is there a better way to do this?
+  //     return player
+  //   })
+  // }
+
+  // TODO: seperate actions? Have actions subtract different amounts? Rename this to "action"?
+  // move (socketId) {
+  //   const movesRemaining = players.find(player => {
+  //     return player.id = socketId
+  //   }).movesRemaining
+
+  //   if (movesRemaining > 0) {
+  //     players = players.map(player => {
+  //       if (player.id === socketId) {
+  //         player.movesRemaining = player.movesRemaining - 1
+  //       }
+  //       // TODO: is there a better way to do this?
+  //       return player
+  //     })
+  //   }
+
+  //   return movesRemaining > 0
+  // }
 
   turnDone () {
     this.turnCounter++

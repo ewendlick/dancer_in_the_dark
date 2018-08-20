@@ -52,7 +52,6 @@ io.on('connection', socket => {
 io.on('connection', (socket) => {
   PLAYERS.addPlayer(socket.id, MAP_UNSEEN)
   io.emit('playersPublicInfo', PLAYERS.playersPublicInfo())
-  // io.to(`${socket.id}`).emit('playerId', PLAYERS.playerId(socket.id))
   io.to(`${socket.id}`).emit('playerId', socket.id)
 
   // "Constructor"
@@ -354,18 +353,22 @@ function handleInput(socketId, keyCode) {
   if (keyCode === LEFT && MOVEABLE_SQUARES.includes(MAP[player.y][player.x - 1])) {
     console.log('left')
     PLAYERS.setRelativePosition(socketId, -1, 0)
+    // PLAYERS.move(socketId)
     PLAYERS.turnDone()
   } else if (keyCode === UP && MOVEABLE_SQUARES.includes(MAP[player.y - 1][player.x])) {
     console.log('up')
     PLAYERS.setRelativePosition(socketId, 0, -1)
+    // PLAYERS.move()
     PLAYERS.turnDone()
   } else if (keyCode === RIGHT && MOVEABLE_SQUARES.includes(MAP[player.y][player.x + 1])) {
     console.log('right')
     PLAYERS.setRelativePosition(socketId, 1, 0)
+    // PLAYERS.move()
     PLAYERS.turnDone()
   } else if (keyCode === DOWN && MOVEABLE_SQUARES.includes(MAP[player.y + 1][player.x])) {
     console.log('down')
     PLAYERS.setRelativePosition(socketId, 0, 1)
+    // PLAYERS.move()
     PLAYERS.turnDone()
   } else {
     // Do nothing. Do not end the player's turn
