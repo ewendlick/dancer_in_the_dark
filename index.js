@@ -59,7 +59,7 @@ io.on('connection', (socket) => {
     if (!isTreasurePlaced) {
       // TODO: randomize the spawn distance
       // TODO: put the randomized spawn thing into the lib/random file
-      isTreasurePlaced = spawnAtDistance(1, 1, 10, '^')
+      isTreasurePlaced = spawnAtDistance(1, 1, 2, '^')
     }
     if (!isTrapsPlaced) {
       printOut.humanReadableMap(MAP)
@@ -73,7 +73,6 @@ io.on('connection', (socket) => {
     PLAYERS.playersPublicInfo().forEach(player => {
       io.to(`${player.id}`).emit('players', PLAYERS.visiblePlayers(player.id, visibleMap(player.id)))
     })
-
     // TODO: figure out how to display that there are not enough players. Make it another emit??
     io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
   }
@@ -85,6 +84,8 @@ io.on('connection', (socket) => {
       const currentVisibleMap = visibleMap(socket.id)
       const map = PLAYERS.updateSeenMap(socket.id, currentVisibleMap)
       // https://socket.io/docs/emit-cheatsheet/
+
+      resolveTile(socket.id)
       io.to(`${socket.id}`).emit('map', map)
       PLAYERS.playersPublicInfo().forEach(player => {
         io.to(`${player.id}`).emit('players', PLAYERS.visiblePlayers(player.id, visibleMap(player.id)))
@@ -228,7 +229,21 @@ function spawnAt (x, y, item = '^') {
 // TODO
 // TODO: does whatever is at the tile: teleporter, pick up an item, activate a trap...
 function resolveTile (socketId) {
+  // get the location of the player, check the tile if there is anything besides floor
+  const player = PLAYERS.thisPlayer(socketId)
 
+  if (MAP[player.y][player.x] == ' ') {
+    return
+  }
+
+  // TODO: constants?
+  // treasure
+  if (MAP[player.y][player.x] == '^') {
+    console.log(chalk.yellow('Treasure found by: ' + socketId))
+    PLAYERS.addInventory(socketId, 'treasure', 1)
+    // clear the square in the map (we assume that the point is either wall, object, or floor. No combination)
+    MAP[player.y][player.x] = ' '
+  }
 }
 
 function lookPaths (direction, secondDirection, distance) {

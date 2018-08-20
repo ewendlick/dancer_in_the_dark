@@ -22,13 +22,13 @@ module.exports = class Players {
                         seenMap,
                         x,
                         y,
-                        movesRemaining: 0,
+                        movesRemaining: 0, // unimplemented
                         inventory: {
                           arrows: 2, // (umimplemented)
                           treasure: 0 // (unimplemented)
                         },
                         status: {
-                          speed: 3,
+                          speed: 3, // unimplemented
                           stunned: 0 // turns until not stunned (unimplemented)
                         }
                      })
@@ -68,15 +68,6 @@ module.exports = class Players {
       return { id: player.id, name: player.name }
     })
   }
-
-  // TODO: rename? selfId? thisPlayerId?
-  // uhhhhhhhhhhhhhhh does this do nothing??
-  // Yeah, this does do nothing at the moment
-  // playerId (socketId) {
-  //   return this.players.find(player => {
-  //     return player.id === socketId
-  //   }).id
-  // }
 
   visiblePlayers (socketId, visibleMap) {
     // If a player is on a square that is not 0, display them
@@ -174,6 +165,17 @@ module.exports = class Players {
 
   turnDone () {
     this.turnCounter++
+  }
+
+  // TODO: more generic function for adding and removing anything??
+  addInventory (socketId, key, value) {
+    this.players = this.players.map(player => {
+      if (player.id === socketId) {
+        player.inventory[key] += value
+      }
+      // TODO: is there a better way to do this?
+      return player
+    })
   }
 
   // TODO: cannot name this length since it overwrites
