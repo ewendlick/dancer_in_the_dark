@@ -23,10 +23,11 @@
           LEFT: 37,
           UP: 38,
           RIGHT: 39,
-          DOWN: 40
+          DOWN: 40,
+          SPACEBAR: 32
         }
 
-        const ALLOWED_KEYCODES = [KEY.LEFT, KEY.UP, KEY.RIGHT, KEY.DOWN];
+        const ALLOWED_KEYCODES = [KEY.LEFT, KEY.UP, KEY.RIGHT, KEY.DOWN, KEY.SPACEBAR];
 
         $('body').on('keydown', function(key) {
           emitKeyDown(key.keyCode)

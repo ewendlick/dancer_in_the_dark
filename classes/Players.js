@@ -178,6 +178,15 @@ module.exports = class Players {
     })
   }
 
+  viewInventory (socketId, key) {
+    // TODO: handle null, etc
+    return this.players.find(player => {
+      if (player.id === socketId) {
+        return player
+      }
+    }).inventory[key]
+  }
+
   // TODO: cannot name this length since it overwrites
   playerCount () {
     return this.players.length

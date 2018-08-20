@@ -24,8 +24,9 @@ const LEFT = 37
 const UP = 38
 const RIGHT = 39
 const DOWN = 40
+const SPACEBAR = 32
 const L = 76
-const ALLOWED_KEY_CODES = [LEFT, UP, RIGHT, DOWN, L]
+const ALLOWED_KEY_CODES = [LEFT, UP, RIGHT, DOWN, SPACEBAR, L]
 
 let MAP = map.treasureHunt // should this be kept as const? We edit one y,x pair to add treasure
 // TODO: caching. We may need to move to Vue, friend
@@ -216,7 +217,8 @@ function spawnAtDistance (startX, startY, targetDistance, item = '^') {
 // map
 function spawnAt (x, y, item = '^') {
   // Does minimumDistance exceed map width and height? Just stick the item in the futhest corner, moving inwards diagonally for placement
-
+  // TODO: flag to allow this into walls?
+  MAP[y][x] = item
 }
 
 // TODO
@@ -243,6 +245,15 @@ function resolveTile (socketId) {
     PLAYERS.addInventory(socketId, 'treasure', 1)
     // clear the square in the map (we assume that the point is either wall, object, or floor. No combination)
     MAP[player.y][player.x] = ' '
+    // Create the exit
+    // TODO: draw the exit at some random location far away
+    spawnAt (1, 1, item = '>')
+  } else if (MAP[player.y][player.x] == '>') {
+    // TODO: check and see if they have the treasure?
+    if (PLAYERS.viewInventory(socketId, 'treasure') > 0) {
+      // TODO: game ends
+      console.log(chalk.yellow('Exit found by: ' + socketId))
+    }
   }
 }
 
@@ -384,6 +395,9 @@ function handleInput(socketId, keyCode) {
     console.log('down')
     PLAYERS.setRelativePosition(socketId, 0, 1)
     // PLAYERS.move()
+    PLAYERS.turnDone()
+  } else if (keyCode === SPACEBAR) {
+    console.log('spacebar') // skip their turn
     PLAYERS.turnDone()
   } else {
     // Do nothing. Do not end the player's turn
