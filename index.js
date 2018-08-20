@@ -8,13 +8,15 @@ const port = process.env.PORT || 3000
 const express = require('express')
 
 const map = require('./maps/map')
+const printOut = require('./lib/printOut')
+const players = require('./classes/Players')
+const PLAYERS = new players
 
+let isTreasurePlaced = false
+let isTrapsPlaced = false
 
-let PLAYERS = []
-let ALLOWED_PLAYERS = [0, 1] // change to a number, ALLOWED_PLAYER_COUNT
-const getPlayersTurn = () => { return ALLOWED_PLAYERS[turnCounter % ALLOWED_PLAYERS.length] }
-let turnCounter = 0
-let isGameRunning = false
+// TODO: map class
+// TODO: consider an input class. What would go in there?
 
 // TODO: Should this be redone?
 const LEFT = 37
@@ -29,8 +31,9 @@ let MAP = map.treasureHunt // should this be kept as const? We edit one y,x pair
 const MAP_HEIGHT = () => { return MAP.length }
 const MAP_WIDTH = () => { return MAP[0].length }
 const MOVEABLE_SQUARES = map.moveable
+const MAP_UNSEEN = [...Array(MAP_HEIGHT())].map(columnItem => Array(MAP_WIDTH()).fill('0'))
 
-floorToWallPercentage()
+printOut.floorToWallPercentage(MAP)
 
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html')
@@ -46,48 +49,56 @@ io.on('connection', socket => {
 })
 
 io.on('connection', (socket) => {
-  // Create a user and give them a socket.id
-  PLAYERS.push({ id: socket.id,
-                 x: 1,
-                 y: 1,
-                 remainingArrows: 2,
-                 hasTreasure: false })
-  isGameRunning = PLAYERS.length >= 2
+  PLAYERS.addPlayer(socket.id, MAP_UNSEEN)
+  io.emit('playerNames', PLAYERS.playersNames())
+  io.to(`${socket.id}`).emit('playerId', PLAYERS.playerId(socket.id))
 
-  if (isGameRunning) {
-    // "Constructor"
+  // "Constructor"
+  if (PLAYERS.isEnoughPlayers) {
+    if (!isTreasurePlaced) {
     // TODO: randomize the spawn distance
-    console.log(spawnAtDistance(1, 1, 10, '^'))
-    print2DArray(MAP) // To console
+      isTreasurePlaced = spawnAtDistance(1, 1, 10, '^')
+    }
+    if (!isTrapsPlaced) {
+      printOut.humanReadableMap(MAP)
+      isTrapsPlaced = spawnOnRows(80, 2, '#')
+    }
+    printOut.humanReadableMap(MAP)
     io.to(`${socket.id}`).emit('map', visibleMap(socket.id))
-    io.to(`${socket.id}`).emit('players', visiblePlayers(socket.id, visibleMap(socket.id)))
-    io.emit('turn', playersTurn())
+    // TODO: need to loop and display visible players to each player on the field after each move
+    // io.to(`${socket.id}`).emit('players', PLAYERS.visiblePlayers(socket.id, visibleMap(socket.id)))
+    PLAYERS.playersNames().forEach(playerId => {
+      io.to(`${playerId}`).emit('players', PLAYERS.visiblePlayers(playerId, visibleMap(playerId)))
+    })
+
+    // TODO: figure out how to display that there are not enough players. Make it another emit??
+    io.emit('turn', PLAYERS.playersTurn(socket.id))
   } else {
-    io.emit('turn', 'Waiting for more players')
+    // io.emit('turn', 'Waiting for more players')
   }
 
   socket.on('client key down', (msg) => {
-    if (acceptInput(socket.id)) {
+    if (PLAYERS.acceptInput(socket.id)) {
       handleInput(socket.id, msg)
       console.log(chalk.green(`Accepted input from: ${socket.id}`))
       const currentVisibleMap = visibleMap(socket.id)
+      const map = PLAYERS.updateSeenMap(socket.id, currentVisibleMap)
       // https://socket.io/docs/emit-cheatsheet/
-      io.to(`${socket.id}`).emit('map', currentVisibleMap)
-      io.to(`${socket.id}`).emit('players', visiblePlayers(socket.id, currentVisibleMap))
-      io.emit('turn', playersTurn())
+      io.to(`${socket.id}`).emit('map', map)
+      PLAYERS.playersNames().forEach(playerId => {
+        io.to(`${playerId}`).emit('players', PLAYERS.visiblePlayers(playerId, visibleMap(playerId)))
+      })
+      // io.to(`${socket.id}`).emit('players', PLAYERS.visiblePlayers(socket.id, currentVisibleMap))
+      io.emit('turn', PLAYERS.playersTurn(socket.id))
     } else {
       // Testing purposes
-      console.log(chalk.red(`Rejected input from: ${socket.id}`))
+      console.log(chalk.red(`Rejected input from: ${socket.id} (Not their turn/Insufficient players)`))
     }
   })
 
   socket.on('disconnect', () => {
-    PLAYERS = PLAYERS.filter(player => {
-      return player.id !== socket.id
-    })
-    // TODO: handle some sort of connection queue
-    // TODO: restart the game if one of the original players leaves
-    isGameRunning = PLAYERS.length >= 2
+    PLAYERS.removePlayer(socket.id)
+    io.emit('playerNames', PLAYERS.playersNames())
     console.log(chalk.red(PLAYERS.length + ' players'))
   })
 })
@@ -96,23 +107,9 @@ http.listen(port, () => {
   console.log('Express is running and listening on *:' + port);
 })
 
-function print2DArray (map) {
-  for (let index = 0; index < map.length; index++) {
-    console.log(map[index].join(''))
-  }
-}
-
-function thisPlayer (socketId) {
-  return PLAYERS.find(player => player.id === socketId)
-}
-
-function thisPlayerIndex (socketId) {
-  return PLAYERS.findIndex(player => player.id === socketId)
-}
-
 function visibleMap (socketId) {
   const viewDistance = 3
-  const player = thisPlayer(socketId)
+  const player = PLAYERS.thisPlayer(socketId)
 
   // TODO: check if there is a wall directly in front of them in a direction and skip this logic if true
   const lookingPaths = lookPaths(DOWN, RIGHT, viewDistance).concat(
@@ -125,17 +122,60 @@ function visibleMap (socketId) {
   return visibleMap
 }
 
-function floorToWallPercentage () {
-  let floor = 0
-  let wall = 0
-  MAP.forEach(row => {
-    row.forEach(columnItem => {
-      columnItem === ' ' ? floor++ : wall++
-    })
+// map
+function spawnOnRows (targetPercentageY, targetNumberX, item = '#') {
+  // '#' is a trap
+  let yAttempted = 0
+  let ySucceeded = 0
+  let xAttempted = 0
+  let xSucceeded = 0
+  let isYUsed = false
+  let spawnOnRowResult = false
+  MAP.forEach((y, indexY) => {
+    yAttempted++
+    if (Math.random() * 100 < targetPercentageY) {
+      for (let spawnAttempt = 0; spawnAttempt < targetNumberX; spawnAttempt++) {
+        xAttempted++
+        spawnOnRowResult = spawnOnRow(indexY, item)
+        if (spawnOnRowResult) {
+          xSucceeded++
+        }
+        isYUsed = isYUsed || spawnOnRowResult
+      }
+      if (isYUsed) {
+        ySucceeded++
+      }
+      isYUsed = false
+    }
   })
-  console.log(`FLOOR TILES: ${Math.round((floor / (floor+wall)) * 100)}%, WALL TILES ${Math.round((wall / (floor+wall)) * 100)}%`)
+  console.log(`Spawned ${item} on ${ySucceeded}/${yAttempted} rows. Target: ${xAttempted} Actual: ${xSucceeded}`)
+  return true
 }
 
+// map
+function spawnOnRow (rowY, item = '#') {
+  // '#' is a trap
+  // Find a point in the row and place if possible
+  const startX = Math.floor(Math.random() * MAP_WIDTH())
+  let index = startX + 1
+  while (index !== startX) {
+    if (index > MAP_WIDTH()) {
+      // wrap
+      index = 0
+    }
+    // Is not a wall or unplaceable?
+    // TODO: not hard coded, we need a system of wall (not moveable), floor (moveable), item (moveable)
+    // console.log(`x: ${point.x} y: ${point.y}`)
+    if (MAP[rowY][index] === ' ') {
+      MAP[rowY][index] = item
+      return true
+    }
+    index++
+  }
+  return false
+}
+
+// map
 function spawnAtDistance (startX, startY, targetDistance, item = '^') {
   // '^' is treasure
   let randomAttempts = 10
@@ -143,7 +183,10 @@ function spawnAtDistance (startX, startY, targetDistance, item = '^') {
     // create a random point that adds up to targetDistance, check the positive and negative x,y combinations and see if it is on the board on any of them
     let x = Math.round((Math.random() * targetDistance))
     let y = targetDistance - x
-    let testPoints = [{y: startY - y, x: startX - x}, {y: startY - y, x: startX + x}, {y: startY + y, x: startX - x}, {y: startY + y, x: startX + x}]
+    let testPoints = [{y: startY - y, x: startX - x},
+                      {y: startY - y, x: startX + x},
+                      {y: startY + y, x: startX - x},
+                      {y: startY + y, x: startX + x}]
 
     let pointCount = 4
     while (pointCount > 0) {
@@ -168,7 +211,8 @@ function spawnAtDistance (startX, startY, targetDistance, item = '^') {
   return false
 }
 
-// easy mode
+// TODO
+// map
 function spawnAt (x, y, item = '^') {
   // Does minimumDistance exceed map width and height? Just stick the item in the futhest corner, moving inwards diagonally for placement
 
@@ -176,27 +220,15 @@ function spawnAt (x, y, item = '^') {
 
 // TODO
 // TODO: functions for each of the player's possible actions
-function playerListen (socketId) {
-  // Skips the player's movement turn, listens for other players.
-  // Returns a rough direction
-}
-
-// TODO
-function seenMap (socketId) {
-  // create a binary map of "seen" tiles, OR it against the main map
-}
+// function playerListen (socketId) {
+//   // Skips the player's movement turn, listens for other players.
+//   // Returns a rough direction
+// }
 
 // TODO
 // TODO: does whatever is at the tile: teleporter, pick up an item, activate a trap...
 function resolveTile (socketId) {
 
-}
-
-function visiblePlayers (socketId, visibleMap) {
-  // If a player is on a square that is not 0, display them
-  return PLAYERS.filter(player => {
-    return visibleMap[player.y][player.x] !== 0
-  })
 }
 
 function lookPaths (direction, secondDirection, distance) {
@@ -226,6 +258,7 @@ function dec2bin (dec) {
 }
 
 function hider (playerX, playerY, map, paths, viewDistance) {
+  // TODO: replace these with those constant-like things
   const mapHeight = map.length
   const mapWidth = map[0].length
 
@@ -307,35 +340,6 @@ function hider (playerX, playerY, map, paths, viewDistance) {
   return shownMap
 }
 
-// TODO: user names?
-// We are checking against socketId when we don't need to.
-function playersTurn () {
-  return `Player ${getPlayersTurn() + 1}'s turn`
-
-  // TODO: it would be nice if this said "your turn"
-  // const currentPlayerIndex = PLAYERS.findIndex(player => {
-  //   return player.id === socketId
-  // })
-  // const turn = getPlayersTurn()
-  // console.log('turn ' + turn + ' currentPlayerIndex ' + currentPlayerIndex)
-  // if (currentPlayerIndex === turn) {
-  //   console.log('a')
-  //   return 'Your turn'
-  // } else {
-  //   console.log('b')
-  //   return `Player ${turn + 1}'s turn`
-  // }
-}
-
-function acceptInput (socketId) {
-  // Check if the socket.id is in the list. We only allow two players.
-  // TODO: may need to reevaluate this: do we need to check if the socket id matches the first two players
-  // if we are checking against players that are allowed to play?
-  return PLAYERS[1] !== undefined &&
-    (socketId === PLAYERS[0].id || socketId === PLAYERS[1].id) &&
-    PLAYERS[getPlayersTurn()].id === socketId
-}
-
 function handleInput(socketId, keyCode) {
   if (!ALLOWED_KEY_CODES.includes(keyCode)) {
     console.log('Keycode not allowed')
@@ -343,26 +347,26 @@ function handleInput(socketId, keyCode) {
   }
 
   // TODO: implement movement impedement
-  const player = thisPlayer(socketId)
+  const player = PLAYERS.thisPlayer(socketId)
 
   // TODO: move back out into its own function
   if (keyCode === LEFT && MOVEABLE_SQUARES.includes(MAP[player.y][player.x - 1])) {
     console.log('left')
-    PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x--
-    turnCounter++
+    PLAYERS.setRelativePosition(socketId, -1, 0)
+    PLAYERS.turnDone()
   } else if (keyCode === UP && MOVEABLE_SQUARES.includes(MAP[player.y - 1][player.x])) {
     console.log('up')
-    PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y--
-    turnCounter++
+    PLAYERS.setRelativePosition(socketId, 0, -1)
+    PLAYERS.turnDone()
   } else if (keyCode === RIGHT && MOVEABLE_SQUARES.includes(MAP[player.y][player.x + 1])) {
     console.log('right')
-    PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].x++
-    turnCounter++
+    PLAYERS.setRelativePosition(socketId, 1, 0)
+    PLAYERS.turnDone()
   } else if (keyCode === DOWN && MOVEABLE_SQUARES.includes(MAP[player.y + 1][player.x])) {
     console.log('down')
-    PLAYERS[PLAYERS.findIndex(player => player.id === socketId)].y++
-    turnCounter++
+    PLAYERS.setRelativePosition(socketId, 0, 1)
+    PLAYERS.turnDone()
   } else {
-    // Do nothing. Do not update the turn counter
+    // Do nothing. Do not end the player's turn
   }
 }
