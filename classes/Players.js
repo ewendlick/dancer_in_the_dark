@@ -1,3 +1,5 @@
+const random = require('../lib/random')
+
 module.exports = class Players {
   constructor () {
     this.players = [] // TODO: this isn't a const. rename
@@ -14,17 +16,19 @@ module.exports = class Players {
   }
 
   addPlayer (id, seenMap = null, x = 1, y = 1 ) {
-    // TODO: add a name (generated, or passed?), possibly rename "id" to "socketId"
+    // TODO: possibly rename "id" to "socketId"
     this.players.push({ id,
+                        name: this.generateRandomName(),
                         seenMap,
                         x,
                         y,
                         inventory: {
-                          arrows: 2,
-                          treasure: 0
+                          arrows: 2, // (umimplemented)
+                          treasure: 0 // (unimplemented)
                         },
                         status: {
-                          stunned: 0 // turns until not stunned
+                          speed: 3, // moves per turn (unimplemented)
+                          stunned: 0 // turns until not stunned (unimplemented)
                         }
                      })
   }
@@ -49,19 +53,29 @@ module.exports = class Players {
     return this.thisPlayerIndex(socketId)
   }
 
+  nextPlayersTurn (socketId) {
+    if (this.thisPlayerIndex(socketId) + 1 >= this.playerCount()) {
+      return 0
+    } else {
+      return this.thisPlayerIndex(socketId) + 1
+    }
+  }
+
   // TODO: come up with a name when these should be plural. I have "playersTurn" which is a possessive "player's" :/
-  playersNames () {
+  playersPublicInfo () {
     return this.players.map(player => {
-      return player.id
+      return { id: player.id, name: player.name }
     })
   }
 
   // TODO: rename? selfId? thisPlayerId?
-  playerId (socketId) {
-    return this.players.find(player => {
-      return player.id === socketId
-    }).id
-  }
+  // uhhhhhhhhhhhhhhh does this do nothing??
+  // Yeah, this does do nothing at the moment
+  // playerId (socketId) {
+  //   return this.players.find(player => {
+  //     return player.id === socketId
+  //   }).id
+  // }
 
   visiblePlayers (socketId, visibleMap) {
     // If a player is on a square that is not 0, display them
@@ -121,6 +135,10 @@ module.exports = class Players {
   //   // Skips the player's movement turn, listens for other players.
   //   // Returns a rough direction
   // }
+
+  generateRandomName (isHero = true) {
+    return random.name(isHero)
+  }
 
   turnDone () {
     this.turnCounter++

@@ -50,31 +50,34 @@ io.on('connection', socket => {
 
 io.on('connection', (socket) => {
   PLAYERS.addPlayer(socket.id, MAP_UNSEEN)
-  io.emit('playerNames', PLAYERS.playersNames())
-  io.to(`${socket.id}`).emit('playerId', PLAYERS.playerId(socket.id))
+  io.emit('playersPublicInfo', PLAYERS.playersPublicInfo())
+  // io.to(`${socket.id}`).emit('playerId', PLAYERS.playerId(socket.id))
+  io.to(`${socket.id}`).emit('playerId', socket.id)
 
   // "Constructor"
   if (PLAYERS.isEnoughPlayers) {
     if (!isTreasurePlaced) {
-    // TODO: randomize the spawn distance
+      // TODO: randomize the spawn distance
+      // TODO: put the randomized spawn thing into the lib/random file
       isTreasurePlaced = spawnAtDistance(1, 1, 10, '^')
     }
     if (!isTrapsPlaced) {
       printOut.humanReadableMap(MAP)
       isTrapsPlaced = spawnOnRows(80, 2, '#')
     }
+
     printOut.humanReadableMap(MAP)
+
     io.to(`${socket.id}`).emit('map', visibleMap(socket.id))
-    // TODO: need to loop and display visible players to each player on the field after each move
-    // io.to(`${socket.id}`).emit('players', PLAYERS.visiblePlayers(socket.id, visibleMap(socket.id)))
-    PLAYERS.playersNames().forEach(playerId => {
-      io.to(`${playerId}`).emit('players', PLAYERS.visiblePlayers(playerId, visibleMap(playerId)))
+
+    PLAYERS.playersPublicInfo().forEach(player => {
+      io.to(`${player.id}`).emit('players', PLAYERS.visiblePlayers(player.id, visibleMap(player.id)))
     })
 
     // TODO: figure out how to display that there are not enough players. Make it another emit??
-    io.emit('turn', PLAYERS.playersTurn(socket.id))
-  } else {
-    // io.emit('turn', 'Waiting for more players')
+    // TODO: should this emit the next player's turn??
+    // io.emit('turn', PLAYERS.playersTurn(socket.id))
+    io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
   }
 
   socket.on('client key down', (msg) => {
@@ -85,11 +88,11 @@ io.on('connection', (socket) => {
       const map = PLAYERS.updateSeenMap(socket.id, currentVisibleMap)
       // https://socket.io/docs/emit-cheatsheet/
       io.to(`${socket.id}`).emit('map', map)
-      PLAYERS.playersNames().forEach(playerId => {
-        io.to(`${playerId}`).emit('players', PLAYERS.visiblePlayers(playerId, visibleMap(playerId)))
+      PLAYERS.playersPublicInfo().forEach(player => {
+        io.to(`${player.id}`).emit('players', PLAYERS.visiblePlayers(player.id, visibleMap(player.id)))
       })
-      // io.to(`${socket.id}`).emit('players', PLAYERS.visiblePlayers(socket.id, currentVisibleMap))
-      io.emit('turn', PLAYERS.playersTurn(socket.id))
+      // io.emit('turn', PLAYERS.playersTurn(socket.id))
+      io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
     } else {
       // Testing purposes
       console.log(chalk.red(`Rejected input from: ${socket.id} (Not their turn/Insufficient players)`))
@@ -98,7 +101,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     PLAYERS.removePlayer(socket.id)
-    io.emit('playerNames', PLAYERS.playersNames())
+    io.emit('playersPublicInfo', PLAYERS.playersPublicInfo())
     console.log(chalk.red(PLAYERS.length + ' players'))
   })
 })

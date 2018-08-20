@@ -61,41 +61,45 @@
         // TODO: make this into a class, and give it an update method
         let playerId = null
         let turn = null
-        let playerNames = []
+        let playersPublicInfo = []
 
         socket.on('playerId', passedPlayerId => {
           playerId = passedPlayerId
         })
 
         socket.on('turn', passedTurn => {
-          $('#turn').html(passedTurn)
           turn = passedTurn
           updatePlayerNames()
         })
 
-        socket.on('playerNames', passedPlayerNames => {
+        socket.on('playersPublicInfo', passedPlayerPublicInfo => {
           // TODO: change this to include index as well as name??
-          playerNames = passedPlayerNames
+          playersPublicInfo = passedPlayerPublicInfo
           updatePlayerNames()
         })
 
         function updatePlayerNames () {
-          if (playerNames === [] || turn === null || playerId === null) {
+          if (playersPublicInfo === [] || turn === null || playerId === null) {
             $('#player-names').html('<ul></ul>')
             return
           }
           // TODO: do we need to add a templating engine now? lol.
           // yeeee, so much to do. Just focus on this and then switch to using Vue or React
-          let builtList = '<ul>'
+          let builtList = '<ul class="player-list">'
           let classes = []
-          playerNames.forEach((player, index) => {
+          let isYou = false
+          let isTurn = false
+          playersPublicInfo.forEach((player, index) => {
             classes = []
-            if (index === playerNames.indexOf(playerId)) {
+            isYou = index === playersPublicInfo.map(ppi => ppi.id).indexOf(playerId)
+            isTurn = index === turn
+            if (isYou) {
               classes.push('you')
-            } else if (index === turn) {
-              classes.push('turn')
             }
-            builtList += `<li class="${classes.join(' ')}">${player}</li>`
+            if (isTurn) {
+              classes.push('current-turn')
+            }
+            builtList += `<li class="${classes.join(' ')}">${isTurn ? '→' : ''}${isYou ? '(YOU) ' : ''}${player.name}</li><!--${player.id}-->`
           })
           builtList += '</ul>'
           // TODO: better styles for this
@@ -194,19 +198,20 @@
       background-color: #333;
     }
 
-    /* TODO: list styles */
-    .you {
-      font-weight: bold;
+    .player-list {
+      color: #ccc;
     }
 
-    .turn {
-      /* TODO: text decoration? */
-      color: #ccc;
+    .player-list .you {
+      color: #000;
+    }
+
+    .player-list .current-turn {
+      font-weight: bold;
     }
     </style>
     <div id="page">
       <div id="turn-container">
-        <div id="turn">(this is for testing and will be removed)</div>
         <div id="player-names">Waiting for players</div>
       </div>
       <div id="map-container"></div>
