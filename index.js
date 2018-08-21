@@ -19,12 +19,14 @@ let isTrapsPlaced = false
 // TODO: consider an input class. What would go in there?
 
 // TODO: Should this be redone?
+// TODO: movement class??
 const LEFT = 37
 const UP = 38
 const RIGHT = 39
 const DOWN = 40
+const SPACEBAR = 32
 const L = 76
-const ALLOWED_KEY_CODES = [LEFT, UP, RIGHT, DOWN, L]
+const ALLOWED_KEY_CODES = [LEFT, UP, RIGHT, DOWN, SPACEBAR, L]
 
 let MAP = map.treasureHunt // should this be kept as const? We edit one y,x pair to add treasure
 // TODO: caching. We may need to move to Vue, friend
@@ -50,31 +52,30 @@ io.on('connection', socket => {
 
 io.on('connection', (socket) => {
   PLAYERS.addPlayer(socket.id, MAP_UNSEEN)
-  io.emit('playerNames', PLAYERS.playersNames())
-  io.to(`${socket.id}`).emit('playerId', PLAYERS.playerId(socket.id))
+  io.emit('playersPublicInfo', PLAYERS.playersPublicInfo())
+  io.to(`${socket.id}`).emit('playerId', socket.id)
 
   // "Constructor"
   if (PLAYERS.isEnoughPlayers) {
     if (!isTreasurePlaced) {
-    // TODO: randomize the spawn distance
-      isTreasurePlaced = spawnAtDistance(1, 1, 10, '^')
+      // TODO: randomize the spawn distance
+      // TODO: put the randomized spawn thing into the lib/random file
+      isTreasurePlaced = spawnAtDistance(1, 1, 2, '^')
     }
     if (!isTrapsPlaced) {
       printOut.humanReadableMap(MAP)
       isTrapsPlaced = spawnOnRows(80, 2, '#')
     }
-    printOut.humanReadableMap(MAP)
-    io.to(`${socket.id}`).emit('map', visibleMap(socket.id))
-    // TODO: need to loop and display visible players to each player on the field after each move
-    // io.to(`${socket.id}`).emit('players', PLAYERS.visiblePlayers(socket.id, visibleMap(socket.id)))
-    PLAYERS.playersNames().forEach(playerId => {
-      io.to(`${playerId}`).emit('players', PLAYERS.visiblePlayers(playerId, visibleMap(playerId)))
-    })
 
+    printOut.humanReadableMap(MAP)
+
+    io.to(`${socket.id}`).emit('map', visibleMap(socket.id))
+
+    PLAYERS.playersPublicInfo().forEach(player => {
+      io.to(`${player.id}`).emit('players', PLAYERS.visiblePlayers(player.id, visibleMap(player.id)))
+    })
     // TODO: figure out how to display that there are not enough players. Make it another emit??
-    io.emit('turn', PLAYERS.playersTurn(socket.id))
-  } else {
-    // io.emit('turn', 'Waiting for more players')
+    io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
   }
 
   socket.on('client key down', (msg) => {
@@ -84,12 +85,13 @@ io.on('connection', (socket) => {
       const currentVisibleMap = visibleMap(socket.id)
       const map = PLAYERS.updateSeenMap(socket.id, currentVisibleMap)
       // https://socket.io/docs/emit-cheatsheet/
+
+      resolveTile(socket.id)
       io.to(`${socket.id}`).emit('map', map)
-      PLAYERS.playersNames().forEach(playerId => {
-        io.to(`${playerId}`).emit('players', PLAYERS.visiblePlayers(playerId, visibleMap(playerId)))
+      PLAYERS.playersPublicInfo().forEach(player => {
+        io.to(`${player.id}`).emit('players', PLAYERS.visiblePlayers(player.id, visibleMap(player.id)))
       })
-      // io.to(`${socket.id}`).emit('players', PLAYERS.visiblePlayers(socket.id, currentVisibleMap))
-      io.emit('turn', PLAYERS.playersTurn(socket.id))
+      io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
     } else {
       // Testing purposes
       console.log(chalk.red(`Rejected input from: ${socket.id} (Not their turn/Insufficient players)`))
@@ -98,7 +100,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     PLAYERS.removePlayer(socket.id)
-    io.emit('playerNames', PLAYERS.playersNames())
+    io.emit('playersPublicInfo', PLAYERS.playersPublicInfo())
     console.log(chalk.red(PLAYERS.length + ' players'))
   })
 })
@@ -211,11 +213,19 @@ function spawnAtDistance (startX, startY, targetDistance, item = '^') {
   return false
 }
 
-// TODO
-// map
-function spawnAt (x, y, item = '^') {
-  // Does minimumDistance exceed map width and height? Just stick the item in the futhest corner, moving inwards diagonally for placement
+// map class
+function spawnAt (x, y, item = '^', onlyFloorPlacement = true) {
+  if (onlyFloorPlacement && MAP[y][x] !== ' ') {
+    return false
+  }
 
+  if (x >= MAP_WIDTH || y >= MAP_HEIGHT) {
+    return false
+  }
+
+  // TODO: if placement is not possible, it would be nice for placement to be attempted
+  MAP[y][x] = item
+  return true
 }
 
 // TODO
@@ -227,8 +237,39 @@ function spawnAt (x, y, item = '^') {
 
 // TODO
 // TODO: does whatever is at the tile: teleporter, pick up an item, activate a trap...
+// TODO: map class? It would need to update the player content
 function resolveTile (socketId) {
+  // get the location of the player, check the tile if there is anything besides floor
+  const player = PLAYERS.thisPlayer(socketId)
 
+  if (MAP[player.y][player.x] == ' ') {
+    return
+  }
+
+  // TODO: constants?
+  // treasure
+  if (MAP[player.y][player.x] == '^') {
+    console.log(chalk.yellow('Treasure found by: ' + socketId))
+    PLAYERS.addInventory(socketId, 'treasure', 1)
+    // clear the square in the map (we assume that the point is either wall, object, or floor. No combination)
+    MAP[player.y][player.x] = ' '
+    // Create the exit
+    // TODO: draw the exit at some random location far away
+    spawnAt (1, 1, item = '>')
+  } else if (MAP[player.y][player.x] == '>') {
+    // TODO: check and see if they have the treasure?
+    if (PLAYERS.viewInventory(socketId, 'treasure') > 0) {
+      console.log(chalk.yellow('Exit found by: ' + socketId))
+      // TODO: restart the game
+    }
+  }
+}
+
+// TODO
+function restartGame () {
+  // Regenerate the map
+  // place the players
+  // reset the player stats
 }
 
 function lookPaths (direction, secondDirection, distance) {
@@ -353,18 +394,25 @@ function handleInput(socketId, keyCode) {
   if (keyCode === LEFT && MOVEABLE_SQUARES.includes(MAP[player.y][player.x - 1])) {
     console.log('left')
     PLAYERS.setRelativePosition(socketId, -1, 0)
+    // PLAYERS.move(socketId)
     PLAYERS.turnDone()
   } else if (keyCode === UP && MOVEABLE_SQUARES.includes(MAP[player.y - 1][player.x])) {
     console.log('up')
     PLAYERS.setRelativePosition(socketId, 0, -1)
+    // PLAYERS.move()
     PLAYERS.turnDone()
   } else if (keyCode === RIGHT && MOVEABLE_SQUARES.includes(MAP[player.y][player.x + 1])) {
     console.log('right')
     PLAYERS.setRelativePosition(socketId, 1, 0)
+    // PLAYERS.move()
     PLAYERS.turnDone()
   } else if (keyCode === DOWN && MOVEABLE_SQUARES.includes(MAP[player.y + 1][player.x])) {
     console.log('down')
     PLAYERS.setRelativePosition(socketId, 0, 1)
+    // PLAYERS.move()
+    PLAYERS.turnDone()
+  } else if (keyCode === SPACEBAR) {
+    console.log('spacebar') // skip their turn
     PLAYERS.turnDone()
   } else {
     // Do nothing. Do not end the player's turn

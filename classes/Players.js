@@ -1,3 +1,5 @@
+const random = require('../lib/random')
+
 module.exports = class Players {
   constructor () {
     this.players = [] // TODO: this isn't a const. rename
@@ -14,17 +16,20 @@ module.exports = class Players {
   }
 
   addPlayer (id, seenMap = null, x = 1, y = 1 ) {
-    // TODO: add a name (generated, or passed?), possibly rename "id" to "socketId"
+    // TODO: possibly rename "id" to "socketId"
     this.players.push({ id,
+                        name: random.name(),
                         seenMap,
                         x,
                         y,
+                        movesRemaining: 0, // unimplemented
                         inventory: {
-                          arrows: 2,
-                          treasure: 0
+                          arrows: 2, // (umimplemented)
+                          treasure: 0 // (unimplemented)
                         },
                         status: {
-                          stunned: 0 // turns until not stunned
+                          speed: 3, // unimplemented
+                          stunned: 0 // turns until not stunned (unimplemented)
                         }
                      })
   }
@@ -49,18 +54,19 @@ module.exports = class Players {
     return this.thisPlayerIndex(socketId)
   }
 
-  // TODO: come up with a name when these should be plural. I have "playersTurn" which is a possessive "player's" :/
-  playersNames () {
-    return this.players.map(player => {
-      return player.id
-    })
+  nextPlayersTurn (socketId) {
+    if (this.thisPlayerIndex(socketId) + 1 >= this.playerCount()) {
+      return 0
+    } else {
+      return this.thisPlayerIndex(socketId) + 1
+    }
   }
 
-  // TODO: rename? selfId? thisPlayerId?
-  playerId (socketId) {
-    return this.players.find(player => {
-      return player.id === socketId
-    }).id
+  // TODO: come up with a name when these should be plural. I have "playersTurn" which is a possessive "player's" :/
+  playersPublicInfo () {
+    return this.players.map(player => {
+      return { id: player.id, name: player.name }
+    })
   }
 
   visiblePlayers (socketId, visibleMap) {
@@ -122,8 +128,63 @@ module.exports = class Players {
   //   // Returns a rough direction
   // }
 
+  // A little pointless to have this as a function at the moment
+  // generateRandomName (isHero = true) {
+  //   return random.name(isHero)
+  // }
+
+  // Assign the number of moves remaining based on "speed" attribute
+  // turnStart (socketId) {
+  //   players = players.map(player => {
+  //     if (player.id === socketId) {
+  //       player.movesRemaining = player.status.speed
+  //     }
+  //     // TODO: is there a better way to do this?
+  //     return player
+  //   })
+  // }
+
+  // TODO: seperate actions? Have actions subtract different amounts? Rename this to "action"?
+  // move (socketId) {
+  //   const movesRemaining = players.find(player => {
+  //     return player.id = socketId
+  //   }).movesRemaining
+
+  //   if (movesRemaining > 0) {
+  //     players = players.map(player => {
+  //       if (player.id === socketId) {
+  //         player.movesRemaining = player.movesRemaining - 1
+  //       }
+  //       // TODO: is there a better way to do this?
+  //       return player
+  //     })
+  //   }
+
+  //   return movesRemaining > 0
+  // }
+
   turnDone () {
     this.turnCounter++
+  }
+
+  // TODO: more generic function for adding and removing anything??
+  addInventory (socketId, key, value) {
+    this.players = this.players.map(player => {
+      if (player.id === socketId) {
+        player.inventory[key] += value
+      }
+      // TODO: is there a better way to do this?
+      return player
+    })
+  }
+
+  viewInventory (socketId, key) {
+    // TODO: handle null, etc
+    return this.players.find(player => {
+      if (player.id === socketId) {
+        return player
+      }
+    }).inventory[key]
   }
 
   // TODO: cannot name this length since it overwrites

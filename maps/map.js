@@ -40,9 +40,10 @@ module.exports = {
         '│           │',
         '└───────────┘',
     ]),
-    moveable: ' <>^' // TODO: combine floors and items
+    moveable: ' #<>^' // TODO: as mentioned in other locations, need a system of wall (not moveable), floor (moveable), and item (moveable), and later implement movement impedements?
 };
 
+// Keeps the maps more human-readable here
 function to2DArray (map) {
     return map.map(row => {
         return row.split('')
