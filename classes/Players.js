@@ -29,7 +29,7 @@ module.exports = class Players {
                         },
                         status: {
                           movement: 3, // unimplemented
-                          view: 3, // unimplemented
+                          viewDistance: 3, // unimplemented
                           stunned: 0 // turns until not stunned (unimplemented)
                         }
                      })
@@ -179,6 +179,8 @@ module.exports = class Players {
     })
   }
 
+  // TODO: this is silly. We already have the thisPlayer function
+  // TODO: delete this
   viewInventory (socketId, key) {
     // TODO: handle null, etc
     return this.players.find(player => {
@@ -187,6 +189,16 @@ module.exports = class Players {
       }
     }).inventory[key]
   }
+
+  // TODO: make DRY
+  // viewStatus (socketId, key) {
+  //   // TODO: handle null, etc
+  //   return this.players.find(player => {
+  //     if (player.id === socketId) {
+  //       return player
+  //     }
+  //   }).status[key]
+  // }
 
   // TODO: cannot name this length since it overwrites
   playerCount () {
