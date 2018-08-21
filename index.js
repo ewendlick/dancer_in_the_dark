@@ -213,12 +213,19 @@ function spawnAtDistance (startX, startY, targetDistance, item = '^') {
   return false
 }
 
-// TODO
-// map
-function spawnAt (x, y, item = '^') {
-  // Does minimumDistance exceed map width and height? Just stick the item in the futhest corner, moving inwards diagonally for placement
-  // TODO: flag to allow this into walls?
+// map class
+function spawnAt (x, y, item = '^', onlyFloorPlacement = true) {
+  if (onlyFloorPlacement && MAP[y][x] !== ' ') {
+    return false
+  }
+
+  if (x >= MAP_WIDTH || y >= MAP_HEIGHT) {
+    return false
+  }
+
+  // TODO: if placement is not possible, it would be nice for placement to be attempted
   MAP[y][x] = item
+  return true
 }
 
 // TODO
@@ -230,6 +237,7 @@ function spawnAt (x, y, item = '^') {
 
 // TODO
 // TODO: does whatever is at the tile: teleporter, pick up an item, activate a trap...
+// TODO: map class? It would need to update the player content
 function resolveTile (socketId) {
   // get the location of the player, check the tile if there is anything besides floor
   const player = PLAYERS.thisPlayer(socketId)
@@ -251,10 +259,17 @@ function resolveTile (socketId) {
   } else if (MAP[player.y][player.x] == '>') {
     // TODO: check and see if they have the treasure?
     if (PLAYERS.viewInventory(socketId, 'treasure') > 0) {
-      // TODO: game ends
       console.log(chalk.yellow('Exit found by: ' + socketId))
+      // TODO: restart the game
     }
   }
+}
+
+// TODO
+function restartGame () {
+  // Regenerate the map
+  // place the players
+  // reset the player stats
 }
 
 function lookPaths (direction, secondDirection, distance) {
