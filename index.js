@@ -45,8 +45,10 @@ app.use(express.static('static'))
 
 io.on('connection', socket => {
   console.log(chalk.blue('〇 A user connected with socket ID' + socket.id))
+  emitMessage ('A user connected', 'success', 'all') // TODO: Display the person's "name"
   socket.on('disconnect', () => {
     console.log(chalk.red('× A user disconnected with socket ID' + socket.id))
+    emitMessage ('A user disconnected', 'failure', 'all') // TODO: Display the person's "name"
   })
 })
 
@@ -71,6 +73,7 @@ io.on('connection', (socket) => {
 
     io.to(`${socket.id}`).emit('map', visibleMap(socket.id))
 
+    // TODO: switch to socket.broadcast here
     PLAYERS.playersPublicInfo().forEach(player => {
       io.to(`${player.id}`).emit('players', PLAYERS.visiblePlayers(player.id, visibleMap(player.id)))
     })
@@ -82,6 +85,9 @@ io.on('connection', (socket) => {
     if (PLAYERS.acceptInput(socket.id)) {
       handleInput(socket.id, msg)
       console.log(chalk.green(`Accepted input from: ${socket.id}`))
+      // TODO: implement io.broadcast.emit to send to everyone else. We want to say "you moved" and "a player moved"
+      emitMessage ('A player moved', 'general', 'others', socket.id)
+      emitMessage ('You moved', 'general', 'self', socket.id)
       const currentVisibleMap = visibleMap(socket.id)
       const map = PLAYERS.updateSeenMap(socket.id, currentVisibleMap)
       // https://socket.io/docs/emit-cheatsheet/
@@ -108,6 +114,25 @@ io.on('connection', (socket) => {
 http.listen(port, () => {
   console.log('Express is running and listening on *:' + port);
 })
+
+// TODO: list of allowed types and default. Now using general(black), success(green), failure(red), event(yellow)
+// TODO: refactor this. This is not clean
+function emitMessage (message, type = 'general', target = 'all', socketId = null) {
+  message = `<span class="${type}">${message}</span>`
+  if (target === 'all') {
+    io.emit('message', message)
+  } else if (target === 'others') {
+    // TODO: there is a way to send to all other people using socket.broadcast.emit.... but how to hook that up easily?
+    // TODO: give this some thought. Could we pass the socket into here?
+    PLAYERS.playersPublicInfo().forEach(player => {
+      if (player.id !== socketId) {
+        io.to(`${player.id}`).emit('message', message)
+      }
+    })
+  } else { // self
+    io.to(`${socketId}`).emit('message', message)
+  }
+}
 
 function visibleMap (socketId) {
   const viewDistance = 3
@@ -250,6 +275,8 @@ function resolveTile (socketId) {
   // treasure
   if (MAP[player.y][player.x] == '^') {
     console.log(chalk.yellow('Treasure found by: ' + socketId))
+    emitMessage ('You got the treasure!', 'event', 'self', socketId)
+    emitMessage ('Someone has found the treasure!', 'event', 'others', socketId)
     PLAYERS.addInventory(socketId, 'treasure', 1)
     // clear the square in the map (we assume that the point is either wall, object, or floor. No combination)
     MAP[player.y][player.x] = ' '
@@ -260,6 +287,8 @@ function resolveTile (socketId) {
     // TODO: check and see if they have the treasure?
     if (PLAYERS.viewInventory(socketId, 'treasure') > 0) {
       console.log(chalk.yellow('Exit found by: ' + socketId))
+      emitMessage ('You win!', 'event', 'self', socketId)
+      emitMessage ('Someone made it to the exit with the treasure!', 'failure', 'others', socketId)
       // TODO: restart the game
     }
   }

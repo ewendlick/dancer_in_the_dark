@@ -43,8 +43,20 @@
           }
         }
 
+        socket.on('message', message => {
+          // TODO: cache in jQuery
+          // TODO: seriously, do this. Look at how many times you are using message-container, lol
+          $('#message-container ul').append(`<li>${message}</li>`)
+          // TODO: possibly remove some if there are too many?
+          // TODO: animate a flash when a new message is added
+          // TODO: scroll only if currently at the bottom?
+          $('#message-container').animate({
+            scrollTop: $('#message-container').prop('scrollHeight') - $('#message-container').height()
+          }, 1000)
+        })
+
         socket.on('map', map => {
-          // TODO: clean up, create viewport, cache these
+          // TODO: clean up, create viewport, jQuery cache these
           $('#map-container').html(arrayToHTMLTable(map))
         });
 
@@ -81,12 +93,11 @@
 
         function updatePlayerNames () {
           if (playersPublicInfo === [] || turn === null || playerId === null) {
-            $('#player-names').html('<ul></ul>')
             return
           }
           // TODO: do we need to add a templating engine now? lol.
           // yeeee, so much to do. Just focus on this and then switch to using Vue or React
-          let builtList = '<ul class="player-list">'
+          let builtList = ''
           let classes = []
           let isYou = false
           let isTurn = false
@@ -102,9 +113,8 @@
             }
             builtList += `<li class="${classes.join(' ')}">${isTurn ? '→' : ''}${isYou ? '(YOU) ' : ''}${player.name}</li><!--${player.id}-->`
           })
-          builtList += '</ul>'
           // TODO: better styles for this
-          $('#player-names').html(builtList)
+          $('#player-list-container ul').html(builtList)
         }
 
         function drawPlayer (playerId, x, y) {
@@ -172,7 +182,7 @@
       width: 100%;
       height: 100%;
     }
-    /* work */
+    /* work version */
     .tile {
       background-color: #efefef;
     }
@@ -209,6 +219,19 @@
       color: #ccc;
     }
 
+    /* TODO:flexbox or grid */
+    #player-list-container {
+      min-width: 160px;
+      width: 20%;
+      float: left;
+      border: 1px solid #111;
+      /* DRY */
+      height: 100px;
+      background-color: #fafbfc;
+      font-size: 16px;
+      box-shadow: inset 0 1px 2px rgba(27,31,35,0.075);
+    }
+
     .player-list .you {
       color: #000;
     }
@@ -216,11 +239,50 @@
     .player-list .current-turn {
       font-weight: bold;
     }
+
+    #message-container {
+      overflow-y: scroll;
+      float: left;
+      width: 80%;
+      height: 100px;
+      background-color: #fafbfc;
+      font-size: 16px;
+      box-shadow: inset 0 1px 2px rgba(27,31,35,0.075);
+    }
+
+    #message-container ul {
+      list-style: none;
+      padding: 0 0 0 10px;
+      margin: 0;
+    }
+
+    #message-container span.general {
+      color: #111;
+    }
+
+    #message-container span.success {
+      color: #24af4c;
+    }
+
+    #message-container span.failure {
+      color: #d84831;
+    }
+
+    #message-container span.event {
+      color: #d8a931;
+    }
     </style>
     <div id="page">
-      <div id="turn-container">
-        <div id="player-names">Waiting for players</div>
-      </div>
+      <header>
+        <div id="player-list-container">
+          <ul class="player-list">
+          </ul>
+        </div>
+        <div id="message-container">
+          <ul>
+          </ul>
+        </div>
+      </header>
       <div id="map-container"></div>
     </div>
   </body>

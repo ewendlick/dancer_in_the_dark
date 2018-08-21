@@ -18,17 +18,18 @@ module.exports = class Players {
   addPlayer (id, seenMap = null, x = 1, y = 1 ) {
     // TODO: possibly rename "id" to "socketId"
     this.players.push({ id,
-                        name: random.name(),
+                        name: random.name(true),
                         seenMap,
                         x,
                         y,
-                        movesRemaining: 0, // unimplemented
+                        movesRemaining: 0,
                         inventory: {
                           arrows: 2, // (umimplemented)
                           treasure: 0 // (unimplemented)
                         },
                         status: {
-                          speed: 3, // unimplemented
+                          movement: 3, // unimplemented
+                          view: 3, // unimplemented
                           stunned: 0 // turns until not stunned (unimplemented)
                         }
                      })
