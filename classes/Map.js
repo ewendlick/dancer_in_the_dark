@@ -22,7 +22,7 @@ module.exports = class Map {
     this.width = this.originalMap[0].length
     this.currentMap = this.originalMap
     this.blankMap = [...Array(this.height)].map(columnItem => Array(this.width).fill('0'))
-    // TODO:
+    // TODO: this is not ideal
     this.isTreasurePlaced = false
     this.isTrapsPlaced = false
     this.generateMap()
@@ -42,8 +42,8 @@ module.exports = class Map {
     // TODO: figure out where to generate the map and how to prevent it from happening multiple times
     // I don't like how this has turned out
     if (regenerate) {
-      this.isTreasurePlaced = true
-      this.isTrapsPlaced = true
+      this.isTreasurePlaced = false
+      this.isTrapsPlaced = false
     }
     // TODO: should we check that everything has been placed, and if not, run this again?
     if (!this.isTreasurePlaced) {
@@ -160,8 +160,10 @@ module.exports = class Map {
     return false
   }
 
-
-  visibleMap (viewDistance, x, y) {
+  // TODO: THIS IS RETURNING THE COMPLETE AND FULLY SHOWN MAP
+  // visibleMap (viewDistance, x, y) {
+  visibleMap (player) {
+    const viewDistance = player.status.viewDistance
     // TODO: check if there is a wall directly in front of them in a direction and skip this logic if true
     const lookingPaths = this.lookPaths(INPUT.DOWN, INPUT.RIGHT, viewDistance).concat(
     this.lookPaths(INPUT.RIGHT, INPUT.UP, viewDistance)).concat(
@@ -171,7 +173,9 @@ module.exports = class Map {
     // let visibleMap = hider(player.x, player.y, MAP, lookingPaths, viewDistance)
     // apply "sounds" to the map for other players?
     // return visibleMap
-    return this.hider(x, y, lookingPaths, viewDistance)
+
+    // TODO: these names suck
+    return this.hider(player, lookingPaths)
   }
 
   lookPaths (direction, secondDirection, distance) {
@@ -200,9 +204,13 @@ module.exports = class Map {
     return (dec >>> 0).toString(2)
   }
 
-  hider (playerX, playerY, paths, viewDistance) {
+  hider (player, paths) {
+    const playerX = player.x
+    const playerY = player.y
+    const viewDistance = player.status.viewDistance
     // everything is hidden until a path reveals it
     let shownMap = this.unseenMap
+    // current tile
     shownMap[playerY][playerX] = this.currentMap[playerY][playerX]
 
     // oh no, we need to explicitly check diagonals or rework the view system

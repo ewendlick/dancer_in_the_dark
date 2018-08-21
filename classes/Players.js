@@ -1,10 +1,28 @@
 const random = require('../lib/random')
 
+const printOut = require('../lib/printOut') // DELETE, only used for testing a few things now
+
 module.exports = class Players {
   constructor () {
     this.players = [] // TODO: this isn't a const. rename
     this.ALLOWED_PLAYERS = [0, 1] // TODO: change this to an int
     this.turnCounter = 0
+    this.defaultPlayerStats = {
+      name: null,
+      seenMap: null,
+      x: 1,
+      y: 1,
+      movesRemaining: 0,
+      inventory: {
+        arrows: 2, // (umimplemented)
+        treasure: 0 // (unimplemented)
+      },
+      status: {
+        movement: 3, // unimplemented
+        viewDistance: 3, // unimplemented
+        stunned: 0 // turns until not stunned (unimplemented)
+      }
+    }
   }
 
   thisPlayersTurn () {
@@ -15,24 +33,27 @@ module.exports = class Players {
     return this.ALLOWED_PLAYERS[(this.turnCounter + 1) % this.ALLOWED_PLAYERS.length]
   }
 
-  addPlayer (id, seenMap = null, x = 1, y = 1 ) {
+  addPlayer (id, seenMap, x = 1, y = 1 ) {
     // TODO: possibly rename "id" to "socketId"
-    this.players.push({ id,
-                        name: random.name(true),
-                        seenMap,
-                        x,
-                        y,
-                        movesRemaining: 0,
-                        inventory: {
-                          arrows: 2, // (umimplemented)
-                          treasure: 0 // (unimplemented)
-                        },
-                        status: {
-                          movement: 3, // unimplemented
-                          viewDistance: 3, // unimplemented
-                          stunned: 0 // turns until not stunned (unimplemented)
-                        }
-                     })
+    let playerStats = this.defaultPlayerStats
+    // TODO: is there a better way of doing this?
+    playerStats.seenMap = seenMap
+    playerStats.name = random.name(true)
+    playerStats.x = x
+    playerStats.y = y
+    this.players.push({ id, ...playerStats })
+  }
+
+  resetPlayers (x = 1, y = 1) {
+    // TODO: DRY. This is looking a lot like addPlayer
+    let playerStats = this.defaultPlayerStats
+    // TODO: is there a better way of doing this?
+    // playerStats.seenMap = seenMap
+    playerStats.x = x
+    playerStats.y = y
+    this.players = this.players.map(player => {
+      return { id: player.id, ...playerStats }
+    })
   }
 
   removePlayer (socketId) {
@@ -70,7 +91,7 @@ module.exports = class Players {
     })
   }
 
-  visiblePlayers (socketId, visibleMap) {
+  visiblePlayers (visibleMap) {
     // If a player is on a square that is not 0, display them
     return this.players.filter(player => {
       return visibleMap[player.y][player.x] !== 0
@@ -80,7 +101,22 @@ module.exports = class Players {
   // setPosition (socketId, x, y) {
   // }
 
+  // TODO: this all needs a rewrite
+  // 1) MOVE (not here)
+  // 2) Get visible from that current position (here)
+  // 3) update the seen map (here)
+  // 4) combine seen map with positions of other players (index)
+  // 5) emit (index)
   updateSeenMap (socketId, visibleMap) {
+    console.log('updateSeenMap hit for ' + socketId)
+    if (this.players[0]) {
+      printOut.humanReadableMap(this.players[0].seenMap)
+    }
+    if (this.players[1]) {
+      printOut.humanReadableMap(this.players[1].seenMap)
+    }
+    // console.log(socketId)
+    // console.log('updateSeenMap')
     // add the visiblemap to the particular player's seenMap
     // fog of war tiles are appended with.... what? '░'?
     // update anything that is not '0' (hidden)
