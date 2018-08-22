@@ -45,10 +45,10 @@ io.on('connection', (socket) => {
 
     printOut.humanReadableMap(MAP.fullMap)
 
-    io.to(`${socket.id}`).emit('map', updateVisibleMap(socket.id))
+    io.to(`${socket.id}`).emit('map', seen(socket.id))
 
     PLAYERS.playersPublicInfo().forEach(player => {
-      io.to(`${socket.id}`).emit('players', PLAYERS.visiblePlayers(currentVisibleMap(socket.id)))
+      io.to(`${socket.id}`).emit('players', visiblePlayersFor(socket.id))
     })
 
     // TODO: figure out how to display that there are not enough players. Make it another emit??
@@ -66,10 +66,12 @@ io.on('connection', (socket) => {
 
       resolveTile(socket.id)
 
-      io.to(`${socket.id}`).emit('map', updateVisibleMap(socket.id))
+      io.to(`${socket.id}`).emit('map', seen(socket.id))
+
+      // TODO: using visible() and seen(), implement fog of war
 
       PLAYERS.playersPublicInfo().forEach(player => {
-        io.to(`${player.id}`).emit('players', PLAYERS.visiblePlayers(currentVisibleMap(socket.id)))
+        io.to(`${player.id}`).emit('players', visiblePlayersFor(socket.id))
       })
       io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
     } else {
@@ -108,23 +110,19 @@ function emitMessage (message, type = 'general', target = 'all', socketId = null
   }
 }
 
-function currentVisibleMap (socketId) {
+function seen (socketId) {
+  console.log('seen: ' + socketId)
+  return PLAYERS.updateSeenMap(socketId, visible(socketId))
+}
+
+function visible (socketId) {
   const player = PLAYERS.thisPlayer(socketId)
-  // printOut.humanReadableMap(updateVisibleMap(socket.id))
-  // printOut.humanReadableMap(MAP.visibleMap(player.status.viewDistance, player.x, player.y))
-  // console.log(player.status.viewDistance + ' ' + player.x + ' ' + player.y)
-  // printOut.humanReadableMap(MAP.visibleMap(player))
   return MAP.visibleMap(player)
 }
 
-function updateVisibleMap (socketId) {
-  // const player = PLAYERS.thisPlayer(socketId)
-
-  // const viewDistance = PLAYERS.
-  // return PLAYERS.updateSeenMap(socketId, MAP.visibleMap(player.status.viewDistance, player.x, player.y))
-  // printOut.humanReadableMap(currentVisibleMap(socketId))
-
-  return PLAYERS.updateSeenMap(socketId, currentVisibleMap(socketId))
+function visiblePlayersFor (socketId) {
+  // TODO: Incomplete. Returning all players
+  return PLAYERS.visiblePlayers(visible(socketId))
 }
 
 

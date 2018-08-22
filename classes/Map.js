@@ -160,8 +160,6 @@ module.exports = class Map {
     return false
   }
 
-  // TODO: THIS IS RETURNING THE COMPLETE AND FULLY SHOWN MAP
-  // visibleMap (viewDistance, x, y) {
   visibleMap (player) {
     const viewDistance = player.status.viewDistance
     // TODO: check if there is a wall directly in front of them in a direction and skip this logic if true
@@ -170,12 +168,12 @@ module.exports = class Map {
     this.lookPaths(INPUT.UP, INPUT.LEFT, viewDistance)).concat(
     this.lookPaths(INPUT.LEFT, INPUT.DOWN, viewDistance))
 
-    // let visibleMap = hider(player.x, player.y, MAP, lookingPaths, viewDistance)
+    // let visibleMap = mapRevealer(player.x, player.y, MAP, lookingPaths, viewDistance)
     // apply "sounds" to the map for other players?
     // return visibleMap
 
     // TODO: these names suck
-    return this.hider(player, lookingPaths)
+    return this.mapRevealer(player, lookingPaths)
   }
 
   lookPaths (direction, secondDirection, distance) {
@@ -204,12 +202,13 @@ module.exports = class Map {
     return (dec >>> 0).toString(2)
   }
 
-  hider (player, paths) {
+  mapRevealer (player, paths) {
     const playerX = player.x
     const playerY = player.y
     const viewDistance = player.status.viewDistance
     // everything is hidden until a path reveals it
-    let shownMap = this.unseenMap
+    // let shownMap = Object.assign(this.unseenMap)
+    let shownMap = player.seenMap
     // current tile
     shownMap[playerY][playerX] = this.currentMap[playerY][playerX]
 

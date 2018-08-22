@@ -101,30 +101,12 @@ module.exports = class Players {
   // setPosition (socketId, x, y) {
   // }
 
-  // TODO: this all needs a rewrite
-  // 1) MOVE (not here)
-  // 2) Get visible from that current position (here)
-  // 3) update the seen map (here)
-  // 4) combine seen map with positions of other players (index)
-  // 5) emit (index)
   updateSeenMap (socketId, visibleMap) {
-    console.log('updateSeenMap hit for ' + socketId)
-    if (this.players[0]) {
-      printOut.humanReadableMap(this.players[0].seenMap)
-    }
-    if (this.players[1]) {
-      printOut.humanReadableMap(this.players[1].seenMap)
-    }
-    // console.log(socketId)
-    // console.log('updateSeenMap')
     // add the visiblemap to the particular player's seenMap
     // fog of war tiles are appended with.... what? '░'?
     // update anything that is not '0' (hidden)
     let seenMap = this.thisPlayer(socketId).seenMap
-    // if (seenMap === null) {
-    //   // Ahhhhh, need to pass this in on creation
-    //   seenMap = [...Array(MAP_HEIGHT())].map(columnItem => Array(MAP_WIDTH()).fill('0'))
-    // }
+
     seenMap = seenMap.map((row, indexY) => {
       return row.map((itemX, indexX) => {
         if (visibleMap[indexY][indexX] !== '0') {
@@ -139,6 +121,7 @@ module.exports = class Players {
     // TODO: Should another function be created to return this?
     // I am unsure about this all and wonder if I should just be returning
     // true/false and then setting up tests
+
     return seenMap
   }
 
