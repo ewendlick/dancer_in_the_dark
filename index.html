@@ -24,47 +24,95 @@
           UP: 38,
           RIGHT: 39,
           DOWN: 40,
-          SPACEBAR: 32
+          SPACEBAR: 32,
+          F: 70, // (F)ire
+          C: 67 // (C)ancel
         }
 
-        const ALLOWED_KEYCODES = [KEY.LEFT, KEY.UP, KEY.RIGHT, KEY.DOWN, KEY.SPACEBAR];
+        const SINGLE_KEYCODES = [KEY.LEFT, KEY.UP, KEY.RIGHT, KEY.DOWN, KEY.SPACEBAR, KEY.C]
+        // Require two keys to be pressed
+        const COMBO_KEYCODES = [KEY.F]
 
-        $('body').on('keydown', function(key) {
-          emitKeyDown(key.keyCode)
-          if (ALLOWED_KEYCODES.includes(key.keyCode)) {
-            // Prevents page from moving around from arrow keys
+        const ALLOWED_KEYCODES = SINGLE_KEYCODES.concat(COMBO_KEYCODES)
+
+        const $playerListContainer = $('#player-list-container')
+        const $messageContainer = $('#message-container')
+        const $rulesContainer = $('#rules-container')
+        const $mapContainer = $('#map-container')
+        const $map = $('#map')
+
+        function isAllowedKey (keyCode) {
+          return ALLOWED_KEYCODES.includes(keyCode)
+        }
+
+        function isSingleKey (keyCode) {
+          return SINGLE_KEYCODES.includes(keyCode)
+        }
+
+        function isComboKey (keyCode) {
+          return COMBO_KEYCODES.includes(keyCode)
+        }
+
+        let previousKey = null // only supports combos of 2 keys
+
+        $('body').on('keydown', (key) => {
+          const keyCode = key.keyCode
+          if (isAllowedKey(keyCode)) {
+            if (isSingleKey(keyCode) && previousKey === null) { // move/wait
+              emitSingleKey(keyCode)
+            } else if (keyCode === KEY.C) { // cancel
+              if (previousKey === KEY.F) {
+                addMessage('<span class="failure">You curse your indecisiveness.</span>')
+              }
+              previousKey = null
+            } else if (isComboKey(keyCode)) { // start action
+              previousKey = keyCode
+              if (keyCode === KEY.F) {
+                addMessage('<span class="event">You notch an arrow. Which direction do you shoot?</span>')
+              }
+            } else if (previousKey !== null && isSingleKey(keyCode)) { // finish action
+              emitComboKey([previousKey, keyCode])
+              previousKey = null
+            }
+
+            // Prevents page from moving around from arrow keys and spacebar
             return false
           }
         })
 
-        function emitKeyDown(keyCode) {
-          if (ALLOWED_KEYCODES.includes(keyCode)) {
-            socket.emit('client key down', keyCode);
-          }
+        function emitSingleKey (keyCode) {
+          socket.emit('client single key', keyCode);
+        }
+
+        function emitComboKey (keyCodes) {
+          socket.emit('client combo keys', keyCodes);
         }
 
         socket.on('message', message => {
-          // TODO: cache in jQuery
-          // TODO: seriously, do this. Look at how many times you are using message-container, lol
-          $('#message-container ul').append(`<li>${message}</li>`)
+          addMessage(message)
+        })
+
+        // TODO: don't pass HTML into this. Handle all classes in here
+        function addMessage(message) {
+          $messageContainer.find('ul').append(`<li>${message}</li>`)
           // TODO: possibly remove some if there are too many?
           // TODO: animate a flash when a new message is added
           // TODO: scroll only if currently at the bottom?
-          $('#message-container').animate({
-            scrollTop: $('#message-container').prop('scrollHeight') - $('#message-container').height()
+          $messageContainer.animate({
+            scrollTop: $messageContainer.prop('scrollHeight') - $messageContainer.height()
           }, 1000)
-        })
+        }
 
         socket.on('map', map => {
           // TODO: clean up, create viewport, jQuery cache these
-          $('#map-container').html(arrayToHTMLTable(map))
+          $mapContainer.find('table').html(arrayToHTMLTable(map))
         });
 
         socket.on('players', players => {
           // each player needs to be drawn, or just draw the updated player?????
           // TODO: need to clear before we draw
           // Should we store the array passed back and redraw the table?
-          $('#map').find('td').html('')
+          $map.find('td').html('')
 
           players.forEach((player, playerId) => {
             drawPlayer(playerId, player.x, player.y)
@@ -114,7 +162,7 @@
             builtList += `<li class="${classes.join(' ')}">${isTurn ? '→' : ''}${isYou ? '(YOU) ' : ''}${player.name}</li><!--${player.id}-->`
           })
           // TODO: better styles for this
-          $('#player-list-container ul').html(builtList)
+          $playerListContainer.find('ul').html(builtList)
         }
 
         function drawPlayer (playerId, x, y) {
@@ -127,21 +175,19 @@
             playerClass = 'player2'
           }
 
-          $('#map').find(`tr:eq(${y})`).find(`td:eq(${x})`).html(`<div class="tile ${playerClass}"></div>`)
+          $map.find(`tr:eq(${y})`).find(`td:eq(${x})`).html(`<div class="tile ${playerClass}"></div>`)
         }
 
-        function arrayToHTMLTable (array) {
-          // TODO: this is a hot mess. Improve this?
-          let derp = '<table id="map">'
-            array.forEach(row => {
-              derp += '<tr>'
-              row.forEach(columnItem => {
-                derp += `<td class="tile ${cellClass(columnItem)}"></td>`
-              })
-              derp += '</tr>'
+        function arrayToHTMLTable (map) {
+          let builtTable = ''
+          map.forEach(row => {
+            builtTable += '<tr>'
+            row.forEach(columnItem => {
+              builtTable += `<td class="tile ${tileClass(columnItem)}"></td>`
             })
-          derp += '</table>'
-          return derp
+            builtTable += '</tr>'
+          })
+          return builtTable
         }
 
         // TODO: check a cookie for this value
@@ -150,31 +196,32 @@
           isAtHome = true
         }
 
-        function cellClass (cellCode) {
+        // TODO: probably want to break this out into another file at some point in time. This will get large
+        function tileClass (tileCode) {
           // For developing where we don't want the sprites shown, tee hee
           if (!isAtHome) {
-            if (cellCode === ' ') {
+            if (tileCode === ' ') {
               return 'floor'
-            } else if (cellCode === '0') {
+            } else if (tileCode === '0') {
               return 'unknown'
-            } else if ('─│└┌┐┘├┤┬┴┼?.'.includes(cellCode)) {
+            } else if ('─│└┌┐┘├┤┬┴┼?.'.includes(tileCode)) {
               return 'wall'
-            } else if ('^'.includes(cellCode)) {
+            } else if ('^'.includes(tileCode)) {
               return 'treasure'
-            } else if ('#'.includes(cellCode)) {
+            } else if ('#'.includes(tileCode)) {
               return 'trap'
             }
           } else {
-            if (cellCode === ' ') {
+            if (tileCode === ' ') {
               return 'decoration_1' // floor
-            } else if (cellCode === '0') {
+            } else if (tileCode === '0') {
               return 'unknown'
             }
 
-            return 'basic_' + ('─│└┌┐┘├┤┬┴┼?.'.indexOf(cellCode) + 1)
+            return 'basic_' + ('─│└┌┐┘├┤┬┴┼?.'.indexOf(tileCode) + 1)
           }
         }
-      });
+      })
     </script>
     <style>
     #page {
@@ -243,7 +290,7 @@
     #message-container {
       overflow-y: scroll;
       float: left;
-      width: 80%;
+      width: 60%;
       height: 100px;
       background-color: #fafbfc;
       font-size: 16px;
@@ -271,6 +318,17 @@
     #message-container span.event {
       color: #d8a931;
     }
+
+    #rules-container {
+      overflow-y: scroll;
+      float: left;
+      min-width: 160px;
+      width: 20%;
+      height: 100px;
+      background-color: #fafbfc;
+      font-size: 16px;
+      box-shadow: inset 0 1px 2px rgba(27,31,35,0.075);
+    }
     </style>
     <div id="page">
       <header>
@@ -282,8 +340,20 @@
           <ul>
           </ul>
         </div>
+        <div id="rules-container">
+          <ul>
+            <li>1 move per turn</li>
+            <li>Arrow keys move</li>
+            <li>Spacebar waits</li>
+            <li>F and then arrow key (F)ires an arrow in that direction</li>
+            <li>C cancels firing an arrow</li>
+          </ul>
+        </div>
       </header>
-      <div id="map-container"></div>
+      <div id="map-container">
+        <table id="map">
+        </table>
+      </div>
     </div>
   </body>
 </html>

@@ -28,6 +28,15 @@ module.exports = class Map {
     this.generateMap()
   }
 
+  // TODO: consider prefixing the local variables with an underscore
+  get mapWidth () {
+    return this.width
+  }
+
+  get mapHeight () {
+    return this.height
+  }
+
   get fullMap () {
     return this.currentMap
   }
