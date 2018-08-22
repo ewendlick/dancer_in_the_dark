@@ -6,7 +6,14 @@ const INPUT = require('../lib/input')
 //   floor
 // ^ treasure
 // 0 unknown/not seen
-
+// TODO: use this
+const TILE = {
+  TRAP: '#',
+  EXIT: '>',
+  FLOOR: ' ',
+  TREASURE: '^',
+  UNSEEN: '0'
+}
 
 // TODO: check and see if we may name this "Map"
 module.exports = class Map {
@@ -300,8 +307,24 @@ module.exports = class Map {
     return this.moveable.includes(tile)
   }
 
-  // Cannot exclusively be in here, because the player class instance will need to be updated in many cases (traps slow, treasure updates inventory)
-  resolveTile () {
-
+  // TODO: need to make constants for this all this?
+  // TODO: should we just check MAP.fullMap[y][x] for this?
+  tileIs (x, y) {
+    if (this.currentMap[y][x] === ' ') {
+      return 'floor' // TODO: constants
+    } else if (!this.isMoveable(this.currentMap[y][x])) {
+      return 'wall'
+    } else if (this.currentMap[y][x] === '^') {
+      return 'treasure'
+    } else if (this.currentMap[y][x] === '>') {
+      return 'exit'
+    } else if (this.currentMap[y][x] === '#') {
+      return 'trap'
+    } else if (this.currentMap[y][x] === '0') {
+      return 'unseen'
+    } else {
+      return 'unknown'
+    }
+    // TODO: later, we need to allow multiple items per tile. Now, it is just a single item
   }
 }

@@ -136,7 +136,6 @@ function emitMessage (message, type = 'general', target = 'all', socketId = null
 }
 
 function seen (socketId) {
-  console.log('seen: ' + socketId)
   return PLAYERS.updateSeenMap(socketId, visible(socketId))
 }
 
@@ -273,7 +272,7 @@ function fireProjectile (socketId, keyCode) {
       y += 1
     }
 
-    currentTileIs = tileIs(x, y)
+    currentTileIs = MAP.tileIs(x, y)
 
     if (currentTileIs === 'wall') {
       // message to the person who fired it
@@ -295,22 +294,6 @@ function fireProjectile (socketId, keyCode) {
       break
     }
   }
-}
-
-// TODO: we are entering non-DRY territory with this. Also, move this to the MAP class
-function tileIs (x, y) {
-  if (MAP.fullMap[y][x] === ' ') {
-    return 'floor' // TODO: constants
-  } else if (!MAP.isMoveable(MAP.fullMap[y][x])) {
-    return 'wall'
-  } else if (MAP.fullMap[y][x] === '^') {
-    return 'treasure'
-  } else if (MAP.fullMap[y][x] === '>') {
-    return 'exit'
-  } else if (MAP.fullMap[y][x] === '#') {
-    return 'trap'
-  }
-  // TODO: later, we need to allow multiple items per tile. Now, it is just a single item
 }
 
 function tileHas (x, y) {
