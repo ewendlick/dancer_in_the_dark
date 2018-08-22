@@ -1,10 +1,28 @@
 const random = require('../lib/random')
 
+const printOut = require('../lib/printOut') // DELETE, only used for testing a few things now
+
 module.exports = class Players {
   constructor () {
     this.players = [] // TODO: this isn't a const. rename
     this.ALLOWED_PLAYERS = [0, 1] // TODO: change this to an int
     this.turnCounter = 0
+    this.defaultPlayerStats = {
+      name: null,
+      seenMap: null,
+      x: 1,
+      y: 1,
+      movesRemaining: 0,
+      inventory: {
+        arrows: 2, // (umimplemented)
+        treasure: 0 // (unimplemented)
+      },
+      status: {
+        movement: 3, // unimplemented
+        viewDistance: 3, // unimplemented
+        stunned: 0 // turns until not stunned (unimplemented)
+      }
+    }
   }
 
   thisPlayersTurn () {
@@ -15,24 +33,27 @@ module.exports = class Players {
     return this.ALLOWED_PLAYERS[(this.turnCounter + 1) % this.ALLOWED_PLAYERS.length]
   }
 
-  addPlayer (id, seenMap = null, x = 1, y = 1 ) {
+  addPlayer (id, seenMap, x = 1, y = 1 ) {
     // TODO: possibly rename "id" to "socketId"
-    this.players.push({ id,
-                        name: random.name(true),
-                        seenMap,
-                        x,
-                        y,
-                        movesRemaining: 0,
-                        inventory: {
-                          arrows: 2, // (umimplemented)
-                          treasure: 0 // (unimplemented)
-                        },
-                        status: {
-                          movement: 3, // unimplemented
-                          view: 3, // unimplemented
-                          stunned: 0 // turns until not stunned (unimplemented)
-                        }
-                     })
+    let playerStats = this.defaultPlayerStats
+    // TODO: is there a better way of doing this?
+    playerStats.seenMap = seenMap
+    playerStats.name = random.name(true)
+    playerStats.x = x
+    playerStats.y = y
+    this.players.push({ id, ...playerStats })
+  }
+
+  resetPlayers (x = 1, y = 1) {
+    // TODO: DRY. This is looking a lot like addPlayer
+    let playerStats = this.defaultPlayerStats
+    // TODO: is there a better way of doing this?
+    // playerStats.seenMap = seenMap
+    playerStats.x = x
+    playerStats.y = y
+    this.players = this.players.map(player => {
+      return { id: player.id, ...playerStats }
+    })
   }
 
   removePlayer (socketId) {
@@ -70,7 +91,7 @@ module.exports = class Players {
     })
   }
 
-  visiblePlayers (socketId, visibleMap) {
+  visiblePlayers (visibleMap) {
     // If a player is on a square that is not 0, display them
     return this.players.filter(player => {
       return visibleMap[player.y][player.x] !== 0
@@ -85,10 +106,7 @@ module.exports = class Players {
     // fog of war tiles are appended with.... what? '░'?
     // update anything that is not '0' (hidden)
     let seenMap = this.thisPlayer(socketId).seenMap
-    // if (seenMap === null) {
-    //   // Ahhhhh, need to pass this in on creation
-    //   seenMap = [...Array(MAP_HEIGHT())].map(columnItem => Array(MAP_WIDTH()).fill('0'))
-    // }
+
     seenMap = seenMap.map((row, indexY) => {
       return row.map((itemX, indexX) => {
         if (visibleMap[indexY][indexX] !== '0') {
@@ -103,6 +121,7 @@ module.exports = class Players {
     // TODO: Should another function be created to return this?
     // I am unsure about this all and wonder if I should just be returning
     // true/false and then setting up tests
+
     return seenMap
   }
 
@@ -179,6 +198,8 @@ module.exports = class Players {
     })
   }
 
+  // TODO: this is silly. We already have the thisPlayer function
+  // TODO: delete this
   viewInventory (socketId, key) {
     // TODO: handle null, etc
     return this.players.find(player => {
@@ -187,6 +208,16 @@ module.exports = class Players {
       }
     }).inventory[key]
   }
+
+  // TODO: make DRY
+  // viewStatus (socketId, key) {
+  //   // TODO: handle null, etc
+  //   return this.players.find(player => {
+  //     if (player.id === socketId) {
+  //       return player
+  //     }
+  //   }).status[key]
+  // }
 
   // TODO: cannot name this length since it overwrites
   playerCount () {
