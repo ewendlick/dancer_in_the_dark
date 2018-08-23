@@ -13,6 +13,7 @@ const printOut = require('./lib/printOut')
 const players = require('./classes/Players')
 const PLAYERS = new players
 const INPUT = require('./lib/input')
+const random = require('./lib/random')
 
 printOut.floorToWallPercentage(MAP.fullMap)
 
@@ -24,10 +25,10 @@ app.use(express.static('static'))
 
 io.on('connection', socket => {
   console.log(chalk.blue('〇 A user connected with socket ID' + socket.id))
-  emitMessage ('A user connected', 'success', 'all') // TODO: Display the person's "name"
+  emitMessage('A user connected', 'success', 'all') // TODO: Display the person's "name"
   socket.on('disconnect', () => {
     console.log(chalk.red('× A user disconnected with socket ID' + socket.id))
-    emitMessage ('A user disconnected', 'failure', 'all') // TODO: Display the person's "name"
+    emitMessage('A user disconnected', 'failure', 'all') // TODO: Display the person's "name"
   })
 })
 
@@ -55,13 +56,13 @@ io.on('connection', (socket) => {
     io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
   }
 
-  socket.on('client key down', (msg) => {
+  socket.on('client single key', (msg) => {
     if (PLAYERS.acceptInput(socket.id)) {
-      handleInput(socket.id, msg)
+      handleSingleKey(socket.id, msg)
       console.log(chalk.green(`Accepted input from: ${socket.id}`))
       // TODO: implement io.broadcast.emit to send to everyone else. We want to say "you moved" and "a player moved"
-      emitMessage ('A player moved', 'general', 'others', socket.id)
-      emitMessage ('You moved', 'general', 'self', socket.id)
+      emitMessage('A player moved', 'general', 'others', socket.id)
+      emitMessage('You moved', 'general', 'self', socket.id)
       // https://socket.io/docs/emit-cheatsheet/
 
       resolveTile(socket.id)
@@ -80,6 +81,28 @@ io.on('connection', (socket) => {
     }
   })
 
+  // TODO: work here
+  // Because we are passing an array and not a single key, maybe we can combine this 'client combo keys' with 'client single key'
+  socket.on('client combo keys', (msg) => {
+    // passes in an array
+    if (PLAYERS.acceptInput(socket.id)) {
+      handleComboKey(socket.id, msg)
+      console.log(chalk.green(`Accepted input from: ${socket.id}`))
+      // TODO: emit messages to people involved
+      //   emitMessage('A player moved', 'general', 'others', socket.id)
+      //   emitMessage('You moved', 'general', 'self', socket.id)
+
+      //   io.to(`${socket.id}`).emit('map', seen(socket.id))
+
+      //   PLAYERS.playersPublicInfo().forEach(player => {
+      //     io.to(`${player.id}`).emit('players', visiblePlayersFor(socket.id))
+      //   })
+
+      io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
+    }
+  })
+
+
   socket.on('disconnect', () => {
     PLAYERS.removePlayer(socket.id)
     io.emit('playersPublicInfo', PLAYERS.playersPublicInfo())
@@ -94,6 +117,8 @@ http.listen(port, () => {
 // TODO: list of allowed types and default. Now using general(black), success(green), failure(red), event(yellow)
 // TODO: refactor this. This is not clean
 function emitMessage (message, type = 'general', target = 'all', socketId = null) {
+  // TODO: I added the ability to add messages to the index.html file. Probably shouldn't be
+  // passing HTML out of here anymore. Refactor this
   message = `<span class="${type}">${message}</span>`
   if (target === 'all') {
     io.emit('message', message)
@@ -111,7 +136,6 @@ function emitMessage (message, type = 'general', target = 'all', socketId = null
 }
 
 function seen (socketId) {
-  console.log('seen: ' + socketId)
   return PLAYERS.updateSeenMap(socketId, visible(socketId))
 }
 
@@ -173,7 +197,7 @@ function restartGame () {
   // TODO: emit an event to animate something in index.html, or something like that
 }
 
-function handleInput(socketId, keyCode) {
+function handleSingleKey(socketId, keyCode) {
   if (!INPUT.isAllowed(keyCode)) {
     console.log('Keycode not allowed')
     return
@@ -208,5 +232,88 @@ function handleInput(socketId, keyCode) {
     PLAYERS.turnDone()
   } else {
     // Do nothing. Do not end the player's turn
+  }
+}
+
+function handleComboKey(socketId, keyCodes) {
+  // currently only used for "fire"
+  // It is assumed that only two values are in the passed array
+  // TODO: check to confirm that the values are in the correct order (e.g. [KEY.F, KEY.DOWN])
+  if (!INPUT.isAllowed(keyCodes[0]) || !INPUT.isAllowed(keyCodes[1])) {
+    console.log('Keycodes not allowed')
+    return
+  }
+
+  // TODO: create a file shared between both index.html and index.js for INPUT/KEY information
+  if (keyCodes[0] === INPUT.F) {
+    fireProjectile(socketId, keyCodes[1])
+    PLAYERS.turnDone()
+  }
+}
+
+function fireProjectile (socketId, keyCode) {
+  // instantly move in a single direction
+  // TODO: consider movement of tiles per turn
+
+  const player = PLAYERS.thisPlayer(socketId)
+
+  // TODO: refactor. Hitting the conditional on each loop isn't ideal. There has to be a better way
+  let x = player.x
+  let y = player.y
+  let currentTileIs = null
+  while(x >= 0 && x < MAP.mapWidth && y >= 0 && y < MAP.mapHeight) {
+    if (keyCode === INPUT.LEFT) {
+      x -= 1
+    } else if (keyCode === INPUT.UP) {
+      y -= 1
+    } else if (keyCode === INPUT.RIGHT) {
+      x += 1
+    } else if (keyCode === INPUT.DOWN) {
+      y += 1
+    }
+
+    currentTileIs = MAP.tileIs(x, y)
+
+    if (currentTileIs === 'wall') {
+      // message to the person who fired it
+      // TODO: Different messages depending on visibility?
+      emitMessage('The arrow embeds itself in a wall', 'event', 'self', socketId)
+      break
+    } else if (currentTileIs === 'treasure') {
+      emitMessage('You hear a loud clang', 'event', 'all')
+      break
+    }
+
+    if (tileHas(x, y) === 'player') {
+      const struckPlayer = strikePlayerAt(x, y)
+      // TODO: Message to the person struck...edit arrowStrike() for both?
+      // emitMessage('', 'event', 'self', socketId)
+      // Message to the person who fired
+      emitMessage(random.arrowStrike(struckPlayer.name), 'event', 'self', socketId)
+      // TODO: Message to all other players?
+      break
+    }
+  }
+}
+
+function tileHas (x, y) {
+  // currently, only players may exist on a tile without overwriting the value
+  const players = PLAYERS.playersAt(x, y)
+  if (players.length > 0) {
+    return 'player'
+  } else {
+    return 'nothing'
+  }
+}
+
+// TODO: move this to the player class??
+function strikePlayerAt (x, y) {
+  const players = PLAYERS.playersAt(x, y)
+  if (players.length > 0) {
+    // TODO: figure out how to handle multiple people on the same tile, because the first person
+    // will always be the one hit by an arrow in this case
+    //
+    // TODO: perform any status changes here. Reduce HP, reduce their speed, stun them, etc
+    return players[0]
   }
 }
