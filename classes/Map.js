@@ -105,11 +105,7 @@ module.exports = class Map {
 
   // TODO: move onlyFloorPlacement to addItemAt????
   spawnItemAt (x, y, itemType = this._TILE_TYPE.TREASURE, onlyFloorPlacement = true) {
-    if (onlyFloorPlacement && this._bgMap[y][x] !== this._TILE_TYPE.FLOOR) {
-      return false
-    }
-
-    if (x >= this._width || y >= this._height) {
+    if (onlyFloorPlacement && this._bgMap[y][x] !== this._TILE_TYPE.FLOOR && !this.isInMap(x, y)) {
       return false
     }
 
@@ -133,8 +129,7 @@ module.exports = class Map {
       while (pointCount > 0) {
         let point = testPoints.splice(Math.floor(Math.random() * testPoints.length), 1)[0]
 
-        // is inside of the map's boundaries?
-        if (point.x >= 0 && point.x < this._width && point.y >=0 && point.y < this._height) {
+        if (this.isInMap(point.x, point.y)) {
           // Is not a wall or unplaceable?
           // TODO: not hard coded, we need a system of wall (not moveable), floor (moveable), item (moveable)
           if (this._bgMap[point.y][point.x] === this._TILE_TYPE.FLOOR) {
@@ -149,6 +144,10 @@ module.exports = class Map {
       randomAttempts--
     }
     return false
+  }
+
+  isInMap (x, y) {
+    return x >= 0 && x < this._width && y >= 0 && y < this._height
   }
 
   spawnItemsOnRows (targetPercentageY, targetNumberX, itemType = this._TILE_TYPE.TRAP) {
