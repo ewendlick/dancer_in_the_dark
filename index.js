@@ -15,7 +15,7 @@ const PLAYERS = new players
 const INPUT = require('./lib/input')
 const random = require('./lib/random')
 
-printOut.floorToWallPercentage(MAP.fullMap)
+printOut.floorToWallPercentage(MAP.bgMap)
 
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html')
@@ -44,7 +44,7 @@ io.on('connection', (socket) => {
     MAP.generateMap()
     // TODO: Need to move the players to the corner (break that out of addPlayer?)
 
-    printOut.humanReadableMap(MAP.fullMap)
+    printOut.humanReadableMap(MAP.bgMap)
 
     io.to(`${socket.id}`).emit('map', seen(socket.id))
 
@@ -164,13 +164,13 @@ function resolveTile (socketId) {
   // get the location of the player, check the tile if there is anything besides floor
   const player = PLAYERS.thisPlayer(socketId)
 
-  if (MAP.fullMap[player.y][player.x] == ' ') {
+  if (MAP.bgMap[player.y][player.x] === MAP.TILE_TYPE.FLOOR) {
     return
   }
 
   // TODO: constants?
   // treasure
-  if (MAP.fullMap[player.y][player.x] == '^') {
+  if (MAP.bgMap[player.y][player.x] === MAP.TILE_TYPE.TREASURE) {
     console.log(chalk.yellow('Treasure found by: ' + socketId))
     emitMessage('You got the treasure!', 'event', 'self', socketId)
     emitMessage('Someone has found the treasure!', 'event', 'others', socketId)
@@ -179,8 +179,8 @@ function resolveTile (socketId) {
     MAP.updateMapAt(player.x, player.y, ' ')
     // Create the exit
     // TODO: draw the exit at some random location far away
-    MAP.spawnAt(1, 1, item = '>')
-  } else if (MAP.fullMap[player.y][player.x] == '>') {
+    MAP.spawnAt(1, 1, item = MAP.TILE_TYPE.EXIT)
+  } else if (MAP.bgMap[player.y][player.x] === MAP.TILE_TYPE.EXIT) {
     // TODO: check and see if they have the treasure?
     if (PLAYERS.viewInventory(socketId, 'treasure') > 0) {
       console.log(chalk.yellow('Exit found by: ' + socketId))
@@ -207,22 +207,22 @@ function handleSingleKey(socketId, keyCode) {
   const player = PLAYERS.thisPlayer(socketId)
 
   // TODO: move back out into its own function
-  if (keyCode === INPUT.LEFT && MAP.isMoveable(MAP.fullMap[player.y][player.x - 1])) {
+  if (keyCode === INPUT.LEFT && MAP.isMoveable(MAP.movementImpedementMap[player.y][player.x - 1])) {
     console.log(chalk.green('(LEFT) Pressed'))
     PLAYERS.setRelativePosition(socketId, -1, 0)
     // PLAYERS.move(socketId)
     PLAYERS.turnDone()
-  } else if (keyCode === INPUT.UP && MAP.isMoveable(MAP.fullMap[player.y - 1][player.x])) {
+  } else if (keyCode === INPUT.UP && MAP.isMoveable(MAP.movementImpedementMap[player.y - 1][player.x])) {
     console.log(chalk.green('(UP) Pressed'))
     PLAYERS.setRelativePosition(socketId, 0, -1)
     // PLAYERS.move()
     PLAYERS.turnDone()
-  } else if (keyCode === INPUT.RIGHT && MAP.isMoveable(MAP.fullMap[player.y][player.x + 1])) {
+  } else if (keyCode === INPUT.RIGHT && MAP.isMoveable(MAP.movementImpedementMap[player.y][player.x + 1])) {
     console.log(chalk.green('(RIGHT) Pressed'))
     PLAYERS.setRelativePosition(socketId, 1, 0)
     // PLAYERS.move()
     PLAYERS.turnDone()
-  } else if (keyCode === INPUT.DOWN && MAP.isMoveable(MAP.fullMap[player.y + 1][player.x])) {
+  } else if (keyCode === INPUT.DOWN && MAP.isMoveable(MAP.movementImpedementMap[player.y + 1][player.x])) {
     console.log(chalk.green('(DOWN) Pressed'))
     PLAYERS.setRelativePosition(socketId, 0, 1)
     // PLAYERS.move()
@@ -272,14 +272,12 @@ function fireProjectile (socketId, keyCode) {
       y += 1
     }
 
-    currentTileIs = MAP.tileIs(x, y)
-
-    if (currentTileIs === 'wall') {
+    if (MAP.bgMap[y][x] === MAP.TILE_TYPE.WALL) {
       // message to the person who fired it
       // TODO: Different messages depending on visibility?
       emitMessage('The arrow embeds itself in a wall', 'event', 'self', socketId)
       break
-    } else if (currentTileIs === 'treasure') {
+    } else if (MAP.bgMap[y][x] === MAP.TILE_TYPE.TREASURE) {
       emitMessage('You hear a loud clang', 'event', 'all')
       break
     }
@@ -296,6 +294,7 @@ function fireProjectile (socketId, keyCode) {
   }
 }
 
+// TODO: update this to return players as well as items
 function tileHas (x, y) {
   // currently, only players may exist on a tile without overwriting the value
   const players = PLAYERS.playersAt(x, y)
