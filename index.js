@@ -203,26 +203,25 @@ function handleSingleKey(socketId, keyCode) {
     return
   }
 
-  // TODO: implement movement impedement
   const player = PLAYERS.thisPlayer(socketId)
 
   // TODO: move back out into its own function
-  if (keyCode === INPUT.LEFT && MAP.isMoveable(MAP.movementImpedementMap[player.y][player.x - 1])) {
+  if (keyCode === INPUT.LEFT && MAP.isMoveable(MAP.movementImpedimentMap[player.y][player.x - 1])) {
     console.log(chalk.green('(LEFT) Pressed'))
     PLAYERS.setRelativePosition(socketId, -1, 0)
     // PLAYERS.move(socketId)
     PLAYERS.turnDone()
-  } else if (keyCode === INPUT.UP && MAP.isMoveable(MAP.movementImpedementMap[player.y - 1][player.x])) {
+  } else if (keyCode === INPUT.UP && MAP.isMoveable(MAP.movementImpedimentMap[player.y - 1][player.x])) {
     console.log(chalk.green('(UP) Pressed'))
     PLAYERS.setRelativePosition(socketId, 0, -1)
     // PLAYERS.move()
     PLAYERS.turnDone()
-  } else if (keyCode === INPUT.RIGHT && MAP.isMoveable(MAP.movementImpedementMap[player.y][player.x + 1])) {
+  } else if (keyCode === INPUT.RIGHT && MAP.isMoveable(MAP.movementImpedimentMap[player.y][player.x + 1])) {
     console.log(chalk.green('(RIGHT) Pressed'))
     PLAYERS.setRelativePosition(socketId, 1, 0)
     // PLAYERS.move()
     PLAYERS.turnDone()
-  } else if (keyCode === INPUT.DOWN && MAP.isMoveable(MAP.movementImpedementMap[player.y + 1][player.x])) {
+  } else if (keyCode === INPUT.DOWN && MAP.isMoveable(MAP.movementImpedimentMap[player.y + 1][player.x])) {
     console.log(chalk.green('(DOWN) Pressed'))
     PLAYERS.setRelativePosition(socketId, 0, 1)
     // PLAYERS.move()

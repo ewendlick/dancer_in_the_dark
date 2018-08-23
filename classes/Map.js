@@ -29,7 +29,7 @@ module.exports = class Map {
     }
     // TODO: Need to make this a const. May not be possible in JS...
     this.originalBgMap = maps.treasureHuntBg // TODO: pass in? Randomly load different ones?
-    this._movementImpedementMap = maps.treasureHuntMovementImpedement
+    this._movementImpedimentMap = maps.treasureHuntMovementImpediment
     // TODO: want to generate maps in the future.... maybe
     this.height = this.originalBgMap.length
     this.width = this.originalBgMap[0].length
@@ -55,8 +55,8 @@ module.exports = class Map {
     return this.currentBgMap
   }
 
-  get movementImpedementMap () {
-    return this._movementImpedementMap
+  get movementImpedimentMap () {
+    return this._movementImpedimentMap
   }
 
   get unseenMap () {
@@ -270,7 +270,7 @@ module.exports = class Map {
           x--
         }
 
-        if (this.isMoveable(this._movementImpedementMap[y][x])) {
+        if (this.isMoveable(this._movementImpedimentMap[y][x])) {
           shownMap[y][x] = this.currentBgMap[y][x]
         } else {
           shownMap[y][x] = this.currentBgMap[y][x]
@@ -288,16 +288,16 @@ module.exports = class Map {
       for (let index = 0; index < path.length; index++) {
         let direction = path[index]
 
-        if (direction === INPUT.LEFT && this.isMoveable(this._movementImpedementMap[y][x - 1])) {
+        if (direction === INPUT.LEFT && this.isMoveable(this._movementImpedimentMap[y][x - 1])) {
           shownMap[y][x - 1] = this.currentBgMap[y][x - 1]
           x--
-        } else if (direction === INPUT.UP && this.isMoveable(this._movementImpedementMap[y - 1][x])) {
+        } else if (direction === INPUT.UP && this.isMoveable(this._movementImpedimentMap[y - 1][x])) {
           shownMap[y - 1][x] = this.currentBgMap[y - 1][x]
           y--
-        } else if (direction === INPUT.RIGHT && this.isMoveable(this._movementImpedementMap[y][x + 1])) {
+        } else if (direction === INPUT.RIGHT && this.isMoveable(this._movementImpedimentMap[y][x + 1])) {
           shownMap[y][x + 1] = this.currentBgMap[y][x + 1]
           x++
-        } else if (direction === INPUT.DOWN && this.isMoveable(this._movementImpedementMap[y + 1][x])) {
+        } else if (direction === INPUT.DOWN && this.isMoveable(this._movementImpedimentMap[y + 1][x])) {
           shownMap[y + 1][x] = this.currentBgMap[y + 1][x]
           y++
         } else if (direction === INPUT.LEFT) {

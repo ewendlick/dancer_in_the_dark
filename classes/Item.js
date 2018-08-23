@@ -5,7 +5,7 @@ module.exports = class Item {
     // observable true/false (if observable, skip the detectable check)
     // detectable percentage chance per look (looks happen on each "move")
     // ??moveable true/false
-    // ??movement impedement (TODO: figure out how to implement this. Reduce additional moves?)
+    // ??movement impediment (TODO: figure out how to implement this. Reduce additional moves?)
   }
 
   detect () {
