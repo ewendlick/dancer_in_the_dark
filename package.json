@@ -1,7 +1,7 @@
 {
-  "name": "socket-chat-example",
-  "version": "0.0.1",
-  "description": "my first socket.io app",
+  "name": "dancer-in-the-dark",
+  "version": "0.1.0",
+  "description": "Dancer in the Dark",
   "dependencies": {
     "chalk": "^2.4.1",
     "express": "^4.15.2",

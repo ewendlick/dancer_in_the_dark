@@ -44,7 +44,9 @@ io.on('connection', (socket) => {
     MAP.generateMap()
     // TODO: Need to move the players to the corner (break that out of addPlayer?)
 
-    printOut.humanReadableMap(MAP.bgMap)
+    // printOut.humanReadableBgMap(MAP.bgMap)
+    // printOut.humanReadableItemMap(MAP.itemMap)
+    printOut.humanReadableMap(MAP.bgMap, MAP.itemMap)
 
     io.to(`${socket.id}`).emit('map', seen(socket.id))
 
@@ -168,7 +170,6 @@ function resolveTile (socketId) {
     return
   }
 
-  // TODO: constants?
   // treasure
   if (MAP.bgMap[player.y][player.x] === MAP.TILE_TYPE.TREASURE) {
     console.log(chalk.yellow('Treasure found by: ' + socketId))
@@ -176,10 +177,10 @@ function resolveTile (socketId) {
     emitMessage('Someone has found the treasure!', 'event', 'others', socketId)
     PLAYERS.addInventory(socketId, 'treasure', 1)
     // clear the square in the map (we assume that the point is either wall, object, or floor. No combination)
-    MAP.updateMapAt(player.x, player.y, ' ')
+    MAP.addItemAt(player.x, player.y, MAP.TILE_TYPE.FLOOR)
     // Create the exit
-    // TODO: draw the exit at some random location far away
-    MAP.spawnAt(1, 1, item = MAP.TILE_TYPE.EXIT)
+    // TODO: place the exit at some random location far away
+    MAP.spawnItemAt(1, 1, item = MAP.TILE_TYPE.EXIT)
   } else if (MAP.bgMap[player.y][player.x] === MAP.TILE_TYPE.EXIT) {
     // TODO: check and see if they have the treasure?
     if (PLAYERS.viewInventory(socketId, 'treasure') > 0) {
@@ -260,7 +261,7 @@ function fireProjectile (socketId, keyCode) {
   let x = player.x
   let y = player.y
   let currentTileIs = null
-  while(x >= 0 && x < MAP.mapWidth && y >= 0 && y < MAP.mapHeight) {
+  while(x >= 0 && x < MAP.width && y >= 0 && y < MAP.height) {
     if (keyCode === INPUT.LEFT) {
       x -= 1
     } else if (keyCode === INPUT.UP) {
@@ -293,7 +294,8 @@ function fireProjectile (socketId, keyCode) {
   }
 }
 
-// TODO: update this to return players as well as items
+// TODO: update this to return players as well as items as two arrays
+// TODO: probably need to create a Player class :/
 function tileHas (x, y) {
   // currently, only players may exist on a tile without overwriting the value
   const players = PLAYERS.playersAt(x, y)
