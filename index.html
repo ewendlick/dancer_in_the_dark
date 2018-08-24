@@ -39,7 +39,6 @@
         const $messageContainer = $('#message-container')
         const $rulesContainer = $('#rules-container')
         const $mapContainer = $('#map-container')
-        const $map = $('#map')
 
         function isAllowedKey (keyCode) {
           return ALLOWED_KEYCODES.includes(keyCode)
@@ -106,7 +105,7 @@
         // TODO: receives bgMap, itemMap, and fogOfWar
         socket.on('map', map => {
           // TODO: clean up, create viewport, jQuery cache these
-          $mapContainer.find('table').html(mapToHTMLTable(map))
+          $mapContainer.html(buildMap(map))
         })
 
         socket.on('players', players => {
@@ -115,8 +114,8 @@
           // Should we store the array passed back and redraw the table?
 
           // TODO: Need a better way of handling how players are drawn
-          $map.find('td').find('tile player1').html('')
-          $map.find('td').find('tile player2').html('')
+          $mapContainer.find('tile player1').html('')
+          $mapContainer.find('tile player2').html('')
 
           players.forEach((player, playerId) => {
             drawPlayer(playerId, player.x, player.y)
@@ -179,24 +178,24 @@
             playerClass = 'player2'
           }
 
-          $map.find(`tr:eq(${y})`).find(`td:eq(${x})`).html(`<div class="tile ${playerClass}"></div>`)
+          // TODO: this needs work?
+          // console.log($mapContainer.find(`.row:eq(${y})`))
+          $mapContainer.find(`.row:eq(${y})`).find(`.tile:eq(${x})`).html(`<div class="tile ${playerClass}"></div>`)
         }
 
-        function mapToHTMLTable (map) {
-          let builtTable = ''
+        function buildMap (map) {
+          let builtMap = ''
           const bgMap = map.seenBgMap
           const itemMap = map.seenItemMap
-          console.log(map.seenItemMap)
 
           for (let yIndex = 0; yIndex < bgMap.length; yIndex++) {
-            builtTable += '<tr>'
+            builtMap += '<div class="row">'
             for (let xIndex = 0; xIndex < bgMap[0].length; xIndex++) {
-              builtTable += `<td class="tile ${tileBgClass(bgMap[yIndex][xIndex])}">${items(itemMap[yIndex][xIndex])}</td>`
-              console.log(items(itemMap[yIndex][xIndex]))
+              builtMap += `<div class="tile ${tileBgClass(bgMap[yIndex][xIndex])}">${items(itemMap[yIndex][xIndex])}</div>`
             }
-            builtTable += '</tr>'
+            builtMap += '</div>'
           }
-          return builtTable
+          return builtMap
         }
 
         function items (tileContent) {
@@ -232,11 +231,6 @@
             } else if ('─│└┌┐┘├┤┬┴┼?.'.includes(tileCode)) {
               return 'wall'
             }
-            // else if ('^'.includes(tileCode)) {
-            //   return 'treasure'
-            // } else if ('#'.includes(tileCode)) {
-            //   return 'trap'
-            // }
           } else {
             if (tileCode === ' ') {
               return 'decoration_1' // floor
@@ -257,6 +251,7 @@
       width: 100%;
       height: 100%;
     }
+
     /* work version */
     .tile {
       background-color: #efefef;
@@ -271,7 +266,7 @@
     }
 
     .player1 {
-      background-color: #eee;
+      background-color: #ebe;
     }
 
     .player2 {
@@ -378,9 +373,7 @@
           </ul>
         </div>
       </header>
-      <div id="map-container">
-        <table id="map">
-        </table>
+      <div id="map-container" class="map-container">
       </div>
     </div>
   </body>
