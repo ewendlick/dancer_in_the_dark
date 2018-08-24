@@ -21,6 +21,7 @@ const UNMOVEABLE = -1
 module.exports = class Map {
   constructor () {
     // TODO: I want this to be readonly static
+    // TODO: break this into _TILE_TYPE and _ITEM_TYPE
     this._TILE_TYPE = {
       TRAP: '#',
       EXIT: '>', // (down stairs)
@@ -116,9 +117,34 @@ module.exports = class Map {
   }
 
   // TODO: possibly implement
-  // isItemAt (x, y, itemType) {
+  isItemAt (x, y, itemType) {
+    // TODO: I just realized that we need to handle empty arrays
+    if (this._itemMap[y][x] === null || this._itemMap[y][x] === []) {
+      return
+    }
 
-  // }
+    return this._itemMap[y][x].some(item => {
+      return item.type === itemType
+    })
+  }
+
+  // TODO: this has not been tested for stacks, only for single items
+  consumeItemAt (x, y, itemType, maxAmount = 1) {
+    let consumedItems = []
+    for(var i = 0; i < this._itemMap[y][x].length; i++) {
+      if(this._itemMap[y][x][i].type === itemType) {
+        if (maxAmount > 0) {
+          consumedItems.push(this._itemMap[y][x].splice(i, 1)[0])
+          maxAmount--
+        } else {
+          // TODO: we need to make a decision about default values. The defaults for item map are null. Should it be empty arrays?
+          this._itemMap[y][x] = null
+          break
+        }
+      }
+    }
+    return consumedItems
+  }
 
   // TODO: move onlyFloorPlacement to addItemAt????
   spawnItemAt (x, y, itemType = this._TILE_TYPE.TREASURE, onlyFloorPlacement = true) {

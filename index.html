@@ -91,15 +91,19 @@
           addMessage(message)
         })
 
-        // TODO: don't pass HTML into this. Handle all classes in here
         function addMessage(message) {
-          $messageContainer.find('ul').append(`<li>${message}</li>`)
-          // TODO: possibly remove some if there are too many?
+          // TODO: break out into shared file
+          const allowedTypes = ['general', 'success', 'failure', 'event']
+          let typeClass = allowedTypes.includes(message.type) ? message.type : 'general'
+          $messageContainer.find('ul').append(`<li><span class="${typeClass}">${message.payload}</span></li>`)
+
+          const messageLimit = 20
+          // remove some messages if there are too many?
           // TODO: animate a flash when a new message is added
           // TODO: scroll only if currently at the bottom?
           $messageContainer.animate({
             scrollTop: $messageContainer.prop('scrollHeight') - $messageContainer.height()
-          }, 1000)
+          }, 100)
         }
 
         // TODO: receives bgMap, itemMap, and fogOfWar
