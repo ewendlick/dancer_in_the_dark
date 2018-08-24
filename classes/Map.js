@@ -37,7 +37,9 @@ module.exports = class Map {
     // TODO: rename these "map" things "layer"
     this._bgMap = this.originalBgMap
     this._itemMap = [...Array(this.height)].map(columnItem => Array(this.width).fill(null))
-    this._unseenMap = [...Array(this.height)].map(columnItem => Array(this.width).fill(this._TILE_TYPE.UNSEEN))
+    // TODO: in order to get the item map and unseen map working together, probably make empty/unseen into NULL for both. Currently it is null for item and 0 for bg
+    this._unseenItemMap = [...Array(this.height)].map(columnItem => Array(this.width).fill(null))
+    this._unseenBgMap = [...Array(this.height)].map(columnItem => Array(this.width).fill(this._TILE_TYPE.UNSEEN))
     // TODO: this is not ideal
     this.isTreasurePlaced = false
     this.isTrapsPlaced = false
@@ -63,10 +65,14 @@ module.exports = class Map {
     return this._movementImpedimentMap
   }
 
-  get unseenMap () {
+  get unseenItemMap () {
+    return this._unseenItemMap
+  }
+
+  get unseenBgMap () {
     // TODO: sort out how to use getters without creating a setter.
     // the solution seems to only be "name it something different"
-    return this._unseenMap
+    return this._unseenBgMap
   }
 
   get itemMap () {
@@ -96,12 +102,23 @@ module.exports = class Map {
     }
   }
 
+  // TODO: once we have bg, item, and movement set up, should they all be wrapped into one function?
   addItemAt (x, y, itemType = this._TILE_TYPE.FLOOR) {
     if (this._itemMap[y][x] === null) {
       this._itemMap[y][x] = []
     }
     this._itemMap[y][x].push(new item(itemType))
   }
+
+  // TODO: is this pointless?
+  getItemsAt (x, y) {
+    return this._itemMap[y][x]
+  }
+
+  // TODO: possibly implement
+  // isItemAt (x, y, itemType) {
+
+  // }
 
   // TODO: move onlyFloorPlacement to addItemAt????
   spawnItemAt (x, y, itemType = this._TILE_TYPE.TREASURE, onlyFloorPlacement = true) {
@@ -212,6 +229,7 @@ module.exports = class Map {
     // apply "sounds" to the map for other players?
     // return visibleMap
 
+    // returns { shownBgMap, shownItemMap }
     return this.mapRevealer(player, lookingPaths)
   }
 
@@ -247,9 +265,12 @@ module.exports = class Map {
     const viewDistance = player.status.viewDistance
     // everything is hidden until a path reveals it
     // let shownMap = Object.assign(this.unseenMap)
-    let shownBgMap = player.seenMap
+    // console.log(player)
+    let shownBgMap = player.seenBgMap
+    let shownItemMap = player.seenItemMap
     // current tile
     shownBgMap[playerY][playerX] = this._bgMap[playerY][playerX]
+    shownItemMap[playerY][playerX] = this._itemMap[playerY][playerX]
 
     // oh no, we need to explicitly check diagonals or rework the view system
     // TODO: rework the view system to get diagonals in there. Maybe check for wall collisions on evens?
@@ -277,8 +298,12 @@ module.exports = class Map {
 
         if (this.isMoveable(this._movementImpedimentMap[y][x])) {
           shownBgMap[y][x] = this._bgMap[y][x]
+          // TODO: implement visibility of items here
+          shownItemMap[y][x] = this._itemMap[y][x]
         } else {
           shownBgMap[y][x] = this._bgMap[y][x]
+          // TODO: implement visibility of items here
+          shownItemMap[y][x] = this._itemMap[y][x]
           continue
         }
       }
@@ -295,8 +320,9 @@ module.exports = class Map {
 
         if (direction === INPUT.LEFT) {
           // TODO: could we just do x-- here and skip all of these nested if statements?
-          //
+          // (tried it, and was looking through walls :/ I think the continues just prevent any further looking. Maybe revisit this later because this is a bit weird
           shownBgMap[y][x - 1] = this._bgMap[y][x - 1]
+          shownItemMap[y][x - 1] = this._itemMap[y][x - 1]
           if(this.isMoveable(this._movementImpedimentMap[y][x - 1])) {
             x--
           } else {
@@ -304,6 +330,7 @@ module.exports = class Map {
           }
         } else if (direction === INPUT.UP) {
           shownBgMap[y - 1][x] = this._bgMap[y - 1][x]
+          shownItemMap[y - 1][x] = this._itemMap[y - 1][x]
           if(this.isMoveable(this._movementImpedimentMap[y - 1][x])) {
             y--
           } else {
@@ -311,6 +338,7 @@ module.exports = class Map {
           }
         } else if (direction === INPUT.RIGHT) {
           shownBgMap[y][x + 1] = this._bgMap[y][x + 1]
+          shownItemMap[y][x + 1] = this._itemMap[y][x + 1]
           if (this.isMoveable(this._movementImpedimentMap[y][x + 1])) {
             x++
           } else {
@@ -318,6 +346,7 @@ module.exports = class Map {
           }
         } else if (direction === INPUT.DOWN) {
           shownBgMap[y + 1][x] = this._bgMap[y + 1][x]
+          shownItemMap[y + 1][x] = this._itemMap[y + 1][x]
           if(this.isMoveable(this._movementImpedimentMap[y + 1][x])) {
             y++
           } else {
@@ -326,7 +355,8 @@ module.exports = class Map {
         }
       }
     })
-    return shownBgMap
+
+    return { shownBgMap, shownItemMap }
   }
 
   isMoveable (movementTile) {

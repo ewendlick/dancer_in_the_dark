@@ -33,7 +33,7 @@ io.on('connection', socket => {
 })
 
 io.on('connection', (socket) => {
-  PLAYERS.addPlayer(socket.id, MAP.unseenMap)
+  PLAYERS.addPlayer(socket.id, MAP.unseenBgMap, MAP.unseenItemMap)
   io.emit('playersPublicInfo', PLAYERS.playersPublicInfo())
   io.to(`${socket.id}`).emit('playerId', socket.id)
 
@@ -138,9 +138,13 @@ function emitMessage (message, type = 'general', target = 'all', socketId = null
 }
 
 function seen (socketId) {
-  return PLAYERS.updateSeenMap(socketId, visible(socketId))
+  const visibleMap = visible(socketId)
+  printOut.humanReadableItemMap(visibleMap.shownItemMap)
+  return PLAYERS.updateSeenMap(socketId, visibleMap.shownBgMap, visibleMap.shownItemMap)
 }
 
+// TODO: should we move the visiblePlayersFor into here?
+// TODO: run this once for their turn?
 function visible (socketId) {
   const player = PLAYERS.thisPlayer(socketId)
   return MAP.visibleMap(player)
@@ -148,7 +152,7 @@ function visible (socketId) {
 
 function visiblePlayersFor (socketId) {
   // TODO: Incomplete. Returning all players
-  return PLAYERS.visiblePlayers(visible(socketId))
+  return PLAYERS.visiblePlayers(visible(socketId).shownBgMap)
 }
 
 

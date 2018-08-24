@@ -9,7 +9,8 @@ module.exports = class Players {
     this.turnCounter = 0
     this.defaultPlayerStats = {
       name: null,
-      seenMap: null,
+      seenBgMap: null,
+      seenItemMap: null,
       x: 1,
       y: 1,
       movesRemaining: 0,
@@ -33,11 +34,14 @@ module.exports = class Players {
     return this.ALLOWED_PLAYERS[(this.turnCounter + 1) % this.ALLOWED_PLAYERS.length]
   }
 
-  addPlayer (id, seenMap, x = 1, y = 1 ) {
+  addPlayer (id, seenBgMap, seenItemMap, x = 1, y = 1 ) {
+    // console.log('--addPlayer')
+    // console.log(seenBgMap)
     // TODO: possibly rename "id" to "socketId"
     let playerStats = this.defaultPlayerStats
     // TODO: is there a better way of doing this?
-    playerStats.seenMap = seenMap
+    playerStats.seenBgMap = seenBgMap
+    playerStats.seenItemMap = seenItemMap
     playerStats.name = random.name(true)
     playerStats.x = x
     playerStats.y = y
@@ -48,7 +52,7 @@ module.exports = class Players {
     // TODO: DRY. This is looking a lot like addPlayer
     let playerStats = this.defaultPlayerStats
     // TODO: is there a better way of doing this?
-    // playerStats.seenMap = seenMap
+    // playerStats.seenBgMap = seenBgMap
     playerStats.x = x
     playerStats.y = y
     this.players = this.players.map(player => {
@@ -114,28 +118,45 @@ module.exports = class Players {
   // setPosition (socketId, x, y) {
   // }
 
-  updateSeenMap (socketId, visibleMap) {
-    // add the visiblemap to the particular player's seenMap
+  // TODO: just pass in the map and split it inside of here?
+  updateSeenMap (socketId, visibleBgMap, visibleItemMap) {
+    // add the visiblemap to the particular player's seenBgMap
     // fog of war tiles are appended with.... what? '░'?
     // update anything that is not '0' (hidden)
-    let seenMap = this.thisPlayer(socketId).seenMap
+    // console.log('----')
+    let seenBgMap = this.thisPlayer(socketId).seenBgMap
+    let seenItemMap = this.thisPlayer(socketId).seenItemMap
+    // console.log(seenBgMap)
 
-    seenMap = seenMap.map((row, indexY) => {
+    seenBgMap = seenBgMap.map((row, indexY) => {
       return row.map((itemX, indexX) => {
-        if (visibleMap[indexY][indexX] !== '0') {
-          return visibleMap[indexY][indexX]
+        if (visibleBgMap[indexY][indexX] !== '0') {
+          return visibleBgMap[indexY][indexX]
         } else {
           return itemX
         }
       })
     })
-    // can I do thisPlayer(socketId).seenMap = seenMap ? Try this later
-    this.players[this.thisPlayerIndex(socketId)].seenMap = seenMap
-    // TODO: Should another function be created to return this?
+
+    // TODO: combine all of these into the same loops? The map is always the same size
+    seenItemMap = seenItemMap.map((row, indexY) => {
+      return row.map((itemX, indexX) => {
+        if (visibleItemMap[indexY][indexX] !== null) {
+          return visibleItemMap[indexY][indexX]
+        } else {
+          return itemX
+        }
+      })
+    })
+
+    // TODO: can I do thisPlayer(socketId).seenBgMap = seenBgMap ? Try this later
+    this.players[this.thisPlayerIndex(socketId)].seenBgMap = seenBgMap
+    this.players[this.thisPlayerIndex(socketId)].seenItemMap = seenItemMap
+    // TODO: Should another function be created to return this? --- YES
     // I am unsure about this all and wonder if I should just be returning
     // true/false and then setting up tests
 
-    return seenMap
+    return { seenBgMap, seenItemMap }
   }
 
   setRelativePosition (socketId, x, y) {
