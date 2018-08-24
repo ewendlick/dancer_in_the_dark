@@ -9,6 +9,19 @@ form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 
 #messages { margin-bottom: 40px }
 #display { }
 
+.map-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.map-container .row {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
 .tile {
   height: 32px;
   width: 32px;

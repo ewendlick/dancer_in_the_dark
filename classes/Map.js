@@ -1,57 +1,86 @@
 const maps = require('../lib/maps')
 const INPUT = require('../lib/input')
+const item = require('../classes/Item')
 
-// # trap
-// > exit (down stairs)
-//   floor
-// ^ treasure
-// 0 unknown/not seen
-// TODO: use this
-const TILE = {
-  TRAP: '#',
-  EXIT: '>',
-  FLOOR: ' ',
-  TREASURE: '^',
-  UNSEEN: '0'
-}
+
+// TODO: not DRY
+const MOVEABLE = 1
+const UNMOVEABLE = -1
+
+/* MAP will include maps for
+ * bg
+ * movement impedement (can generate this now)
+ * items
+ */
+
+// MAP will not have players
+
+
 
 // TODO: check and see if we may name this "Map"
 module.exports = class Map {
   constructor () {
-    this.moveable = ' #<>^' // TODO: consider constants
-    // TODO: consider walls (not moveable) floors (moveable) and items (moveable)
-    // TODO: movement impedements?
-    // this.unmoveable = ['']
+    // TODO: I want this to be readonly static
+    this._TILE_TYPE = {
+      TRAP: '#',
+      EXIT: '>', // (down stairs)
+      FLOOR: ' ',
+      TREASURE: '^',
+      UNSEEN: '0' // unknown/unseen, no fog of war
+    }
     // TODO: Need to make this a const. May not be possible in JS...
-    this.originalMap = maps.treasureHunt // TODO: pass in? Randomly load different ones?
+    this.originalBgMap = maps.treasureHuntBg // TODO: pass in? Randomly load different ones?
+    this._movementImpedimentMap = maps.treasureHuntMovementImpediment
     // TODO: want to generate maps in the future.... maybe
-    this.height = this.originalMap.length
-    this.width = this.originalMap[0].length
-    this.currentMap = this.originalMap
-    this.blankMap = [...Array(this.height)].map(columnItem => Array(this.width).fill('0'))
+    this._height = this.originalBgMap.length
+    this._width = this.originalBgMap[0].length
+    // TODO: rename these "map" things "layer"
+    this._bgMap = this.originalBgMap
+    this._itemMap = [...Array(this.height)].map(columnItem => Array(this.width).fill(null))
+    // TODO: in order to get the item map and unseen map working together, probably make empty/unseen into NULL for both. Currently it is null for item and 0 for bg
+    this._unseenItemMap = [...Array(this.height)].map(columnItem => Array(this.width).fill(null))
+    this._unseenBgMap = [...Array(this.height)].map(columnItem => Array(this.width).fill(this._TILE_TYPE.UNSEEN))
     // TODO: this is not ideal
     this.isTreasurePlaced = false
     this.isTrapsPlaced = false
     this.generateMap()
   }
 
+
   // TODO: consider prefixing the local variables with an underscore
-  get mapWidth () {
-    return this.width
+  // This is a good idea, implementing
+  get width () {
+    return this._width
   }
 
-  get mapHeight () {
-    return this.height
+  get height () {
+    return this._height
   }
 
-  get fullMap () {
-    return this.currentMap
+  get bgMap () {
+    return this._bgMap
   }
 
-  get unseenMap () {
+  get movementImpedimentMap () {
+    return this._movementImpedimentMap
+  }
+
+  get unseenItemMap () {
+    return this._unseenItemMap
+  }
+
+  get unseenBgMap () {
     // TODO: sort out how to use getters without creating a setter.
     // the solution seems to only be "name it something different"
-    return this.blankMap
+    return this._unseenBgMap
+  }
+
+  get itemMap () {
+    return this._itemMap
+  }
+
+  get TILE_TYPE () {
+    return this._TILE_TYPE
   }
 
   generateMap (regenerate = false) {
@@ -65,34 +94,44 @@ module.exports = class Map {
     if (!this.isTreasurePlaced) {
       // TODO: randomize the spawn distance
       // TODO: put the randomized spawn thing into the lib/random file?
-      this.isTreasurePlaced = this.spawnAtDistance(1, 1, 2, '^')
+      this.isTreasurePlaced = this.spawnItemAtDistance(1, 1, 2, this._TILE_TYPE.TREASURE)
     }
     if (!this.isTrapsPlaced) {
       // printOut.humanReadableMap(MAP)
-      this.isTrapsPlaced = this.spawnOnRows(80, 2, '#')
+      this.isTrapsPlaced = this.spawnItemsOnRows(80, 2, this._TILE_TYPE.TRAP)
     }
   }
 
-  updateMapAt (x, y, item = ' ') {
-    this.currentMap[y][x] = item
+  // TODO: once we have bg, item, and movement set up, should they all be wrapped into one function?
+  addItemAt (x, y, itemType = this._TILE_TYPE.FLOOR) {
+    if (this._itemMap[y][x] === null) {
+      this._itemMap[y][x] = []
+    }
+    this._itemMap[y][x].push(new item(itemType))
   }
 
-  spawnAt (x, y, item = '^', onlyFloorPlacement = true) {
-    if (onlyFloorPlacement && this.currentMap[y][x] !== ' ') {
-      return false
-    }
+  // TODO: is this pointless?
+  getItemsAt (x, y) {
+    return this._itemMap[y][x]
+  }
 
-    if (x >= this.width || y >= this.height) {
+  // TODO: possibly implement
+  // isItemAt (x, y, itemType) {
+
+  // }
+
+  // TODO: move onlyFloorPlacement to addItemAt????
+  spawnItemAt (x, y, itemType = this._TILE_TYPE.TREASURE, onlyFloorPlacement = true) {
+    if (onlyFloorPlacement && this._bgMap[y][x] !== this._TILE_TYPE.FLOOR && !this.isInMap(x, y)) {
       return false
     }
 
     // TODO: if placement is not possible, it would be nice for placement to be attempted
-    this.currentMap[y][x] = item
+    this.addItemAt(x, y, itemType)
     return true
   }
 
-  spawnAtDistance (startX, startY, targetDistance, item = '^') {
-    // '^' is treasure
+  spawnItemAtDistance (startX, startY, targetDistance, itemType = this._TILE_TYPE.TREASURE) {
     let randomAttempts = 10
     while (randomAttempts > 0) {
       // create a random point that adds up to targetDistance, check the positive and negative x,y combinations and see if it is on the board on any of them
@@ -107,12 +146,11 @@ module.exports = class Map {
       while (pointCount > 0) {
         let point = testPoints.splice(Math.floor(Math.random() * testPoints.length), 1)[0]
 
-        // is inside of the map's boundaries?
-        if (point.x >= 0 && point.x < this.width && point.y >=0 && point.y < this.height) {
+        if (this.isInMap(point.x, point.y)) {
           // Is not a wall or unplaceable?
           // TODO: not hard coded, we need a system of wall (not moveable), floor (moveable), item (moveable)
-          if (this.currentMap[point.y][point.x] === ' ') {
-            this.currentMap[point.y][point.x] = item
+          if (this._bgMap[point.y][point.x] === this._TILE_TYPE.FLOOR) {
+            this.addItemAt(point.x, point.y, itemType)
             return true
           }
           // TODO: move a zigzag outwards looking for an empty spot until past the boundaries of the map
@@ -125,24 +163,27 @@ module.exports = class Map {
     return false
   }
 
-  spawnOnRows (targetPercentageY, targetNumberX, item = '#') {
-    // '#' is a trap
+  isInMap (x, y) {
+    return x >= 0 && x < this._width && y >= 0 && y < this._height
+  }
+
+  spawnItemsOnRows (targetPercentageY, targetNumberX, itemType = this._TILE_TYPE.TRAP) {
     let yAttempted = 0
     let ySucceeded = 0
     let xAttempted = 0
     let xSucceeded = 0
     let isYUsed = false
-    let spawnOnRowResult = false
-    this.currentMap.forEach((y, indexY) => {
+    let spawnItemOnRowResult = false
+    this._bgMap.forEach((y, indexY) => {
       yAttempted++
       if (Math.random() * 100 < targetPercentageY) {
-        for (let spawnAttempt = 0; spawnAttempt < targetNumberX; spawnAttempt++) {
+        for (let spawnItemAttempt = 0; spawnItemAttempt < targetNumberX; spawnItemAttempt++) {
           xAttempted++
-          spawnOnRowResult = this.spawnOnRow(indexY, item)
-          if (spawnOnRowResult) {
+          spawnItemOnRowResult = this.spawnItemOnRow(indexY, itemType)
+          if (spawnItemOnRowResult) {
             xSucceeded++
           }
-          isYUsed = isYUsed || spawnOnRowResult
+          isYUsed = isYUsed || spawnItemOnRowResult
         }
         if (isYUsed) {
           ySucceeded++
@@ -150,25 +191,22 @@ module.exports = class Map {
         isYUsed = false
       }
     })
-    console.log(`Spawned ${item} on ${ySucceeded}/${yAttempted} rows. Target: ${xAttempted} Actual: ${xSucceeded}`)
+    console.log(`Spawned ${itemType} on ${ySucceeded}/${yAttempted} rows. Target: ${xAttempted} Actual: ${xSucceeded}`)
     return true
   }
 
-  spawnOnRow (rowY, item = '#') {
-    // '#' is a trap
+  spawnItemOnRow (rowY, itemType = this._TILE_TYPE.TRAP) {
     // Find a point in the row and place if possible
-    const startX = Math.floor(Math.random() * this.width)
+    const startX = Math.floor(Math.random() * this._width)
     let index = startX + 1
     while (index !== startX) {
-      if (index > this.width) {
+      if (index > this._width) {
         // wrap
         index = 0
       }
-      // Is not a wall or unplaceable?
-      // TODO: not hard coded, we need a system of wall (not moveable), floor (moveable), item (moveable)
-      // console.log(`x: ${point.x} y: ${point.y}`)
-      if (this.currentMap[rowY][index] === ' ') {
-        this.currentMap[rowY][index] = item
+
+      if (this._bgMap[rowY][index] === this._TILE_TYPE.FLOOR) {
+        this.addItemAt(index, rowY, itemType)
         return true
       }
       index++
@@ -176,6 +214,7 @@ module.exports = class Map {
     return false
   }
 
+  // TODO: update to display items
   visibleMap (player) {
     const viewDistance = player.status.viewDistance
     // TODO: check if there is a wall directly in front of them in a direction and skip this logic if true
@@ -184,11 +223,13 @@ module.exports = class Map {
     this.lookPaths(INPUT.UP, INPUT.LEFT, viewDistance)).concat(
     this.lookPaths(INPUT.LEFT, INPUT.DOWN, viewDistance))
 
+    // TODO: add the diagonals into lookPaths????
+
     // let visibleMap = mapRevealer(player.x, player.y, MAP, lookingPaths, viewDistance)
     // apply "sounds" to the map for other players?
     // return visibleMap
 
-    // TODO: these names suck
+    // returns { shownBgMap, shownItemMap }
     return this.mapRevealer(player, lookingPaths)
   }
 
@@ -224,9 +265,12 @@ module.exports = class Map {
     const viewDistance = player.status.viewDistance
     // everything is hidden until a path reveals it
     // let shownMap = Object.assign(this.unseenMap)
-    let shownMap = player.seenMap
+    // console.log(player)
+    let shownBgMap = player.seenBgMap
+    let shownItemMap = player.seenItemMap
     // current tile
-    shownMap[playerY][playerX] = this.currentMap[playerY][playerX]
+    shownBgMap[playerY][playerX] = this._bgMap[playerY][playerX]
+    shownItemMap[playerY][playerX] = this._itemMap[playerY][playerX]
 
     // oh no, we need to explicitly check diagonals or rework the view system
     // TODO: rework the view system to get diagonals in there. Maybe check for wall collisions on evens?
@@ -252,10 +296,14 @@ module.exports = class Map {
           x--
         }
 
-        if (this.isMoveable(this.currentMap[y][x])) {
-          shownMap[y][x] = this.currentMap[y][x]
+        if (this.isMoveable(this._movementImpedimentMap[y][x])) {
+          shownBgMap[y][x] = this._bgMap[y][x]
+          // TODO: implement visibility of items here
+          shownItemMap[y][x] = this._itemMap[y][x]
         } else {
-          shownMap[y][x] = this.currentMap[y][x]
+          shownBgMap[y][x] = this._bgMap[y][x]
+          // TODO: implement visibility of items here
+          shownItemMap[y][x] = this._itemMap[y][x]
           continue
         }
       }
@@ -270,61 +318,48 @@ module.exports = class Map {
       for (let index = 0; index < path.length; index++) {
         let direction = path[index]
 
-        if (direction === INPUT.LEFT && this.isMoveable(this.currentMap[y][x - 1])) {
-          shownMap[y][x - 1] = this.currentMap[y][x - 1]
-          x--
-        } else if (direction === INPUT.UP && this.isMoveable(this.currentMap[y - 1][x])) {
-          shownMap[y - 1][x] = this.currentMap[y - 1][x]
-          y--
-        } else if (direction === INPUT.RIGHT && this.isMoveable(this.currentMap[y][x + 1])) {
-          shownMap[y][x + 1] = this.currentMap[y][x + 1]
-          x++
-        } else if (direction === INPUT.DOWN && this.isMoveable(this.currentMap[y + 1][x])) {
-          shownMap[y + 1][x] = this.currentMap[y + 1][x]
-          y++
-        } else if (direction === INPUT.LEFT) {
-          // TODO: clean this up
-          shownMap[y][x - 1] = this.currentMap[y][x - 1]
-          continue
+        if (direction === INPUT.LEFT) {
+          // TODO: could we just do x-- here and skip all of these nested if statements?
+          // (tried it, and was looking through walls :/ I think the continues just prevent any further looking. Maybe revisit this later because this is a bit weird
+          shownBgMap[y][x - 1] = this._bgMap[y][x - 1]
+          shownItemMap[y][x - 1] = this._itemMap[y][x - 1]
+          if(this.isMoveable(this._movementImpedimentMap[y][x - 1])) {
+            x--
+          } else {
+            continue
+          }
         } else if (direction === INPUT.UP) {
-          shownMap[y - 1][x] = this.currentMap[y - 1][x]
-          continue
+          shownBgMap[y - 1][x] = this._bgMap[y - 1][x]
+          shownItemMap[y - 1][x] = this._itemMap[y - 1][x]
+          if(this.isMoveable(this._movementImpedimentMap[y - 1][x])) {
+            y--
+          } else {
+            continue
+          }
         } else if (direction === INPUT.RIGHT) {
-          shownMap[y][x + 1] = this.currentMap[y][x + 1]
-          continue
+          shownBgMap[y][x + 1] = this._bgMap[y][x + 1]
+          shownItemMap[y][x + 1] = this._itemMap[y][x + 1]
+          if (this.isMoveable(this._movementImpedimentMap[y][x + 1])) {
+            x++
+          } else {
+            continue
+          }
         } else if (direction === INPUT.DOWN) {
-          shownMap[y + 1][x] = this.currentMap[y + 1][x]
-          continue
+          shownBgMap[y + 1][x] = this._bgMap[y + 1][x]
+          shownItemMap[y + 1][x] = this._itemMap[y + 1][x]
+          if(this.isMoveable(this._movementImpedimentMap[y + 1][x])) {
+            y++
+          } else {
+            continue
+          }
         }
       }
     })
-    return shownMap
+
+    return { shownBgMap, shownItemMap }
   }
 
-  // TODO: consider naming. "tile"? "square"? "point"? "location"?
-  isMoveable (tile) {
-    // console.log('isMoveable: ' + tile)
-    return this.moveable.includes(tile)
-  }
-
-  // TODO: need to make constants for this all this?
-  // TODO: should we just check MAP.fullMap[y][x] for this?
-  tileIs (x, y) {
-    if (this.currentMap[y][x] === ' ') {
-      return 'floor' // TODO: constants
-    } else if (!this.isMoveable(this.currentMap[y][x])) {
-      return 'wall'
-    } else if (this.currentMap[y][x] === '^') {
-      return 'treasure'
-    } else if (this.currentMap[y][x] === '>') {
-      return 'exit'
-    } else if (this.currentMap[y][x] === '#') {
-      return 'trap'
-    } else if (this.currentMap[y][x] === '0') {
-      return 'unseen'
-    } else {
-      return 'unknown'
-    }
-    // TODO: later, we need to allow multiple items per tile. Now, it is just a single item
+  isMoveable (movementTile) {
+    return movementTile >= MOVEABLE // currently MOVEABLE is always 1. This will change later when "moves" are implemented
   }
 }

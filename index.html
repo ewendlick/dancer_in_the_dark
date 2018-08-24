@@ -39,7 +39,6 @@
         const $messageContainer = $('#message-container')
         const $rulesContainer = $('#rules-container')
         const $mapContainer = $('#map-container')
-        const $map = $('#map')
 
         function isAllowedKey (keyCode) {
           return ALLOWED_KEYCODES.includes(keyCode)
@@ -103,16 +102,20 @@
           }, 1000)
         }
 
+        // TODO: receives bgMap, itemMap, and fogOfWar
         socket.on('map', map => {
           // TODO: clean up, create viewport, jQuery cache these
-          $mapContainer.find('table').html(arrayToHTMLTable(map))
-        });
+          $mapContainer.html(buildMap(map))
+        })
 
         socket.on('players', players => {
           // each player needs to be drawn, or just draw the updated player?????
           // TODO: need to clear before we draw
           // Should we store the array passed back and redraw the table?
-          $map.find('td').html('')
+
+          // TODO: Need a better way of handling how players are drawn
+          $mapContainer.find('tile player1').html('')
+          $mapContainer.find('tile player2').html('')
 
           players.forEach((player, playerId) => {
             drawPlayer(playerId, player.x, player.y)
@@ -175,19 +178,40 @@
             playerClass = 'player2'
           }
 
-          $map.find(`tr:eq(${y})`).find(`td:eq(${x})`).html(`<div class="tile ${playerClass}"></div>`)
+          // TODO: this needs work?
+          // console.log($mapContainer.find(`.row:eq(${y})`))
+          $mapContainer.find(`.row:eq(${y})`).find(`.tile:eq(${x})`).html(`<div class="tile ${playerClass}"></div>`)
         }
 
-        function arrayToHTMLTable (map) {
-          let builtTable = ''
-          map.forEach(row => {
-            builtTable += '<tr>'
-            row.forEach(columnItem => {
-              builtTable += `<td class="tile ${tileClass(columnItem)}"></td>`
-            })
-            builtTable += '</tr>'
-          })
-          return builtTable
+        function buildMap (map) {
+          let builtMap = ''
+          const bgMap = map.seenBgMap
+          const itemMap = map.seenItemMap
+
+          for (let yIndex = 0; yIndex < bgMap.length; yIndex++) {
+            builtMap += '<div class="row">'
+            for (let xIndex = 0; xIndex < bgMap[0].length; xIndex++) {
+              builtMap += `<div class="tile ${tileBgClass(bgMap[yIndex][xIndex])}">${items(itemMap[yIndex][xIndex])}</div>`
+            }
+            builtMap += '</div>'
+          }
+          return builtMap
+        }
+
+        function items (tileContent) {
+          if (tileContent === null) {
+            return ''
+          }
+          // TODO: not sure what direction I am going with this yet. We want the items to be stacked and visible. However, we want the exit to be very clearly visible.
+          // For now, I will focus on the following:
+          // 1) display the characters
+          // 2) change the characters to squares and create a way to stack them or split it up
+          // so up to 4 are visible at once
+          // Additionally, a "look" system may be required for seeing items on the square
+          const itemString = tileContent.map(item => {
+            return item._type
+          }).join('')
+          return itemString
         }
 
         // TODO: check a cookie for this value
@@ -197,7 +221,7 @@
         }
 
         // TODO: probably want to break this out into another file at some point in time. This will get large
-        function tileClass (tileCode) {
+        function tileBgClass (tileCode) {
           // For developing where we don't want the sprites shown, tee hee
           if (!isAtHome) {
             if (tileCode === ' ') {
@@ -206,10 +230,6 @@
               return 'unknown'
             } else if ('─│└┌┐┘├┤┬┴┼?.'.includes(tileCode)) {
               return 'wall'
-            } else if ('^'.includes(tileCode)) {
-              return 'treasure'
-            } else if ('#'.includes(tileCode)) {
-              return 'trap'
             }
           } else {
             if (tileCode === ' ') {
@@ -221,6 +241,8 @@
             return 'basic_' + ('─│└┌┐┘├┤┬┴┼?.'.indexOf(tileCode) + 1)
           }
         }
+
+        // function tileItems (
       })
     </script>
     <style>
@@ -229,6 +251,7 @@
       width: 100%;
       height: 100%;
     }
+
     /* work version */
     .tile {
       background-color: #efefef;
@@ -243,7 +266,7 @@
     }
 
     .player1 {
-      background-color: #eee;
+      background-color: #ebe;
     }
 
     .player2 {
@@ -350,9 +373,7 @@
           </ul>
         </div>
       </header>
-      <div id="map-container">
-        <table id="map">
-        </table>
+      <div id="map-container" class="map-container">
       </div>
     </div>
   </body>
