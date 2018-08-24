@@ -131,7 +131,7 @@ function emitMessage (payload, type = 'general', target = 'all', socketId = null
 
 function seen (socketId) {
   const visibleMap = visible(socketId)
-  return PLAYERS.updateSeenMap(socketId, visibleMap.shownBgMap, visibleMap.shownItemMap)
+  return PLAYERS.updateSeenMap(socketId, visibleMap.shownBgMap, visibleMap.shownItemMap, visibleMap.fogOfWarMap)
 }
 
 // TODO: should we move the visiblePlayersFor into here?

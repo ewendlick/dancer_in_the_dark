@@ -256,6 +256,7 @@ module.exports = class Map {
     // return visibleMap
 
     // returns { shownBgMap, shownItemMap }
+    // TODO: where should we add fogOfWar? Here seems right, but this is getting convoluted
     return this.mapRevealer(player, lookingPaths)
   }
 
@@ -280,7 +281,6 @@ module.exports = class Map {
     return resultPaths
   }
 
-  // TODO: move into looker?
   dec2bin (dec) {
     return (dec >>> 0).toString(2)
   }
@@ -289,11 +289,11 @@ module.exports = class Map {
     const playerX = player.x
     const playerY = player.y
     const viewDistance = player.status.viewDistance
+
     // everything is hidden until a path reveals it
-    // let shownMap = Object.assign(this.unseenMap)
-    // console.log(player)
     let shownBgMap = player.seenBgMap
     let shownItemMap = player.seenItemMap
+
     // current tile
     shownBgMap[playerY][playerX] = this._bgMap[playerY][playerX]
     shownItemMap[playerY][playerX] = this._itemMap[playerY][playerX]
@@ -382,7 +382,15 @@ module.exports = class Map {
       }
     })
 
-    return { shownBgMap, shownItemMap }
+    const fogOfWarMap = this.fogOfWarMap(true)
+    return { shownBgMap, shownItemMap, fogOfWarMap }
+  }
+
+  // TODO: hook up. This is only returning TRUE right now
+  // Should we even have this here? Why not just make it part of the function above?
+  fogOfWarMap (visibleMap) {
+    // anything visible is set as "true", otherwise "false"
+    return [...Array(this.height)].map(columnItem => Array(this.width).fill(true))
   }
 
   isMoveable (movementTile) {
