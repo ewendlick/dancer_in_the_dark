@@ -44,8 +44,6 @@ io.on('connection', (socket) => {
     MAP.generateMap()
     // TODO: Need to move the players to the corner (break that out of addPlayer?)
 
-    // printOut.humanReadableBgMap(MAP.bgMap)
-    // printOut.humanReadableItemMap(MAP.itemMap)
     printOut.humanReadableMap(MAP.bgMap, MAP.itemMap)
 
     io.to(`${socket.id}`).emit('map', seen(socket.id))
@@ -91,8 +89,6 @@ io.on('connection', (socket) => {
       handleComboKey(socket.id, msg)
       console.log(chalk.green(`Accepted input from: ${socket.id}`))
       // TODO: emit messages to people involved
-      //   emitMessage('A player moved', 'general', 'others', socket.id)
-      //   emitMessage('You moved', 'general', 'self', socket.id)
 
       //   io.to(`${socket.id}`).emit('map', seen(socket.id))
 
@@ -103,7 +99,6 @@ io.on('connection', (socket) => {
       io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
     }
   })
-
 
   socket.on('disconnect', () => {
     PLAYERS.removePlayer(socket.id)
@@ -117,11 +112,8 @@ http.listen(port, () => {
 })
 
 // TODO: list of allowed types and default. Now using general(black), success(green), failure(red), event(yellow)
-// TODO: refactor this. This is not clean
-function emitMessage (message, type = 'general', target = 'all', socketId = null) {
-  // TODO: I added the ability to add messages to the index.html file. Probably shouldn't be
-  // passing HTML out of here anymore. Refactor this
-  message = `<span class="${type}">${message}</span>`
+function emitMessage (payload, type = 'general', target = 'all', socketId = null) {
+  const message = { payload: payload, type: type }
   if (target === 'all') {
     io.emit('message', message)
   } else if (target === 'others') {
@@ -139,8 +131,7 @@ function emitMessage (message, type = 'general', target = 'all', socketId = null
 
 function seen (socketId) {
   const visibleMap = visible(socketId)
-  printOut.humanReadableItemMap(visibleMap.shownItemMap)
-  return PLAYERS.updateSeenMap(socketId, visibleMap.shownBgMap, visibleMap.shownItemMap)
+  return PLAYERS.updateSeenMap(socketId, visibleMap.shownBgMap, visibleMap.shownItemMap, visibleMap.fogOfWarMap)
 }
 
 // TODO: should we move the visiblePlayersFor into here?
@@ -163,30 +154,21 @@ function visiblePlayersFor (socketId) {
 //   // Returns a rough direction
 // }
 
-// TODO
-// TODO: does whatever is at the tile: teleporter, pick up an item, activate a trap...
-// TODO: map class? It would need to update the player content
 function resolveTile (socketId) {
-  // get the location of the player, check the tile if there is anything besides floor
   const player = PLAYERS.thisPlayer(socketId)
 
-  if (MAP.bgMap[player.y][player.x] === MAP.TILE_TYPE.FLOOR) {
-    return
-  }
-
-  // treasure
-  if (MAP.bgMap[player.y][player.x] === MAP.TILE_TYPE.TREASURE) {
+  if (MAP.isItemAt(player.x, player.y, MAP.TILE_TYPE.TREASURE)) {
     console.log(chalk.yellow('Treasure found by: ' + socketId))
     emitMessage('You got the treasure!', 'event', 'self', socketId)
     emitMessage('Someone has found the treasure!', 'event', 'others', socketId)
     PLAYERS.addInventory(socketId, 'treasure', 1)
     // clear the square in the map (we assume that the point is either wall, object, or floor. No combination)
-    MAP.addItemAt(player.x, player.y, MAP.TILE_TYPE.FLOOR)
+    MAP.consumeItemAt(player.x, player.y, MAP.TILE_TYPE.TREASURE)
     // Create the exit
     // TODO: place the exit at some random location far away
-    MAP.spawnItemAt(1, 1, item = MAP.TILE_TYPE.EXIT)
-  } else if (MAP.bgMap[player.y][player.x] === MAP.TILE_TYPE.EXIT) {
-    // TODO: check and see if they have the treasure?
+    MAP.spawnItemAt(1, 1, MAP.TILE_TYPE.EXIT)
+
+  } else if (MAP.isItemAt(player.x, player.y, MAP.TILE_TYPE.EXIT)) {
     if (PLAYERS.viewInventory(socketId, 'treasure') > 0) {
       console.log(chalk.yellow('Exit found by: ' + socketId))
       emitMessage('You win!', 'event', 'self', socketId)
@@ -194,6 +176,8 @@ function resolveTile (socketId) {
       restartGame()
     }
   }
+  // else if teleporter
+  // else if trap
 }
 
 function restartGame () {

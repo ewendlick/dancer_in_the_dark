@@ -23,6 +23,7 @@ form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 
 }
 
 .tile {
+  position: relative;
   height: 32px;
   width: 32px;
 }

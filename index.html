@@ -91,15 +91,23 @@
           addMessage(message)
         })
 
-        // TODO: don't pass HTML into this. Handle all classes in here
         function addMessage(message) {
-          $messageContainer.find('ul').append(`<li>${message}</li>`)
-          // TODO: possibly remove some if there are too many?
+          // TODO: break out into shared file
+          const allowedTypes = ['general', 'success', 'failure', 'event']
+          let typeClass = allowedTypes.includes(message.type) ? message.type : 'general'
+          $messageContainer.find('ul').append(`<li><span class="${typeClass}">${message.payload}</span></li>`)
+
+          const messageLimit = 2
+          // remove some messages if there are too many?
+          if ($messageContainer.find('li').length > messageLimit) {
+            // TODO: cache the li result?
+            $messageContainer.find('li').first().remove()
+          }
           // TODO: animate a flash when a new message is added
           // TODO: scroll only if currently at the bottom?
           $messageContainer.animate({
             scrollTop: $messageContainer.prop('scrollHeight') - $messageContainer.height()
-          }, 1000)
+          }, 100)
         }
 
         // TODO: receives bgMap, itemMap, and fogOfWar
@@ -178,20 +186,20 @@
             playerClass = 'player2'
           }
 
-          // TODO: this needs work?
-          // console.log($mapContainer.find(`.row:eq(${y})`))
-          $mapContainer.find(`.row:eq(${y})`).find(`.tile:eq(${x})`).html(`<div class="tile ${playerClass}"></div>`)
+          $mapContainer.find(`.row:eq(${y})`).find(`.tile:eq(${x})`).append(`<div class="player ${playerClass}"></div>`)
         }
 
         function buildMap (map) {
           let builtMap = ''
           const bgMap = map.seenBgMap
           const itemMap = map.seenItemMap
+          const fogOfWarMap = map.fogOfWarMap
 
-          for (let yIndex = 0; yIndex < bgMap.length; yIndex++) {
+          for (let y = 0; y < bgMap.length; y++) {
             builtMap += '<div class="row">'
-            for (let xIndex = 0; xIndex < bgMap[0].length; xIndex++) {
-              builtMap += `<div class="tile ${tileBgClass(bgMap[yIndex][xIndex])}">${items(itemMap[yIndex][xIndex])}</div>`
+            for (let x = 0; x < bgMap[0].length; x++) {
+              // TODO: how should fow be displayed above other content?
+              builtMap += `<div class="tile ${tileBgClass(bgMap[y][x])} ">${fogOfWarMap[y][x] ? '<div class="fog-of-war"></div>' : ''}${items(itemMap[y][x])}</div>`
             }
             builtMap += '</div>'
           }
@@ -265,6 +273,15 @@
       background-color: #bbb;
     }
 
+    .player {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 32px;
+      width: 32px;
+      z-index: 1;
+    }
+
     .player1 {
       background-color: #ebe;
     }
@@ -283,6 +300,16 @@
 
     .tile.unknown {
       background-color: #333;
+    }
+
+    .fog-of-war {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 32px;
+      width: 32px;
+      background-color: rgba(0, 0, 0, 0.3);
+      z-index: 10;
     }
 
     .player-list {

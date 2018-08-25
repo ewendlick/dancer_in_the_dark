@@ -118,8 +118,8 @@ module.exports = class Players {
   // setPosition (socketId, x, y) {
   // }
 
-  // TODO: just pass in the map and split it inside of here?
-  updateSeenMap (socketId, visibleBgMap, visibleItemMap) {
+  // TODO: just pass in the map and split it inside of here? (Such a better idea now)
+  updateSeenMap (socketId, visibleBgMap, visibleItemMap, fogOfWarMap) {
     // add the visiblemap to the particular player's seenBgMap
     // fog of war tiles are appended with.... what? '░'?
     // update anything that is not '0' (hidden)
@@ -156,7 +156,7 @@ module.exports = class Players {
     // I am unsure about this all and wonder if I should just be returning
     // true/false and then setting up tests
 
-    return { seenBgMap, seenItemMap }
+    return { seenBgMap, seenItemMap, fogOfWarMap }
   }
 
   setRelativePosition (socketId, x, y) {
@@ -180,11 +180,6 @@ module.exports = class Players {
   // function playerListen (socketId) {
   //   // Skips the player's movement turn, listens for other players.
   //   // Returns a rough direction
-  // }
-
-  // A little pointless to have this as a function at the moment
-  // generateRandomName (isHero = true) {
-  //   return random.name(isHero)
   // }
 
   // Assign the number of moves remaining based on "speed" attribute
@@ -258,6 +253,7 @@ module.exports = class Players {
     return this.players.length
   }
 
+  // TODO: better name
   isEnoughPlayers () {
     return this.players.length >= this.ALLOWED_PLAYERS.length
   }

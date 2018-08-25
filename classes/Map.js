@@ -21,6 +21,7 @@ const UNMOVEABLE = -1
 module.exports = class Map {
   constructor () {
     // TODO: I want this to be readonly static
+    // TODO: break this into _TILE_TYPE and _ITEM_TYPE
     this._TILE_TYPE = {
       TRAP: '#',
       EXIT: '>', // (down stairs)
@@ -116,9 +117,34 @@ module.exports = class Map {
   }
 
   // TODO: possibly implement
-  // isItemAt (x, y, itemType) {
+  isItemAt (x, y, itemType) {
+    // TODO: I just realized that we need to handle empty arrays
+    if (this._itemMap[y][x] === null || this._itemMap[y][x] === []) {
+      return
+    }
 
-  // }
+    return this._itemMap[y][x].some(item => {
+      return item.type === itemType
+    })
+  }
+
+  // TODO: this has not been tested for stacks, only for single items
+  consumeItemAt (x, y, itemType, maxAmount = 1) {
+    let consumedItems = []
+    for(var i = 0; i < this._itemMap[y][x].length; i++) {
+      if(this._itemMap[y][x][i].type === itemType) {
+        if (maxAmount > 0) {
+          consumedItems.push(this._itemMap[y][x].splice(i, 1)[0])
+          maxAmount--
+        } else {
+          // TODO: we need to make a decision about default values. The defaults for item map are null. Should it be empty arrays?
+          this._itemMap[y][x] = null
+          break
+        }
+      }
+    }
+    return consumedItems
+  }
 
   // TODO: move onlyFloorPlacement to addItemAt????
   spawnItemAt (x, y, itemType = this._TILE_TYPE.TREASURE, onlyFloorPlacement = true) {
@@ -230,6 +256,7 @@ module.exports = class Map {
     // return visibleMap
 
     // returns { shownBgMap, shownItemMap }
+    // TODO: where should we add fogOfWar? Here seems right, but this is getting convoluted
     return this.mapRevealer(player, lookingPaths)
   }
 
@@ -254,7 +281,6 @@ module.exports = class Map {
     return resultPaths
   }
 
-  // TODO: move into looker?
   dec2bin (dec) {
     return (dec >>> 0).toString(2)
   }
@@ -263,14 +289,16 @@ module.exports = class Map {
     const playerX = player.x
     const playerY = player.y
     const viewDistance = player.status.viewDistance
+
     // everything is hidden until a path reveals it
-    // let shownMap = Object.assign(this.unseenMap)
-    // console.log(player)
     let shownBgMap = player.seenBgMap
     let shownItemMap = player.seenItemMap
+    let fogOfWarMap = [...Array(this.height)].map(columnItem => Array(this.width).fill(true))
+
     // current tile
     shownBgMap[playerY][playerX] = this._bgMap[playerY][playerX]
     shownItemMap[playerY][playerX] = this._itemMap[playerY][playerX]
+    fogOfWarMap[playerY][playerX] = false
 
     // oh no, we need to explicitly check diagonals or rework the view system
     // TODO: rework the view system to get diagonals in there. Maybe check for wall collisions on evens?
@@ -312,51 +340,80 @@ module.exports = class Map {
     paths.forEach(path => {
       let x = playerX
       let y = playerY
+      // TODO: oh man, I never program when drunk, but I am drunk now.
+      // This is here to hopefully make things more DRY, because I am very unhappy with how this section looks
+      // It just looks.... wrong.
+      // Also, another TODO: calm down with the comments. You hate comments. However, this project is
+      // very unlike any of your other projects: you are coding for fun without a plan and seeing where
+      // this ends up.
+      // TODO: put this comment into another file. lol
+      let lookX = null
+      let lookY = null
+
+      // TODO: fog of war need diagonals!
 
       // TODO: return on a wall
       // change this from forEach so we can break from it when hitting a wall
       for (let index = 0; index < path.length; index++) {
-        let direction = path[index]
+        switch (path[index]) {
+          case INPUT.LEFT:
+            // TODO: could we just do x-- here and skip all of these nested if statements?
+            // (tried it, and was looking through walls :/ I think the continues just prevent any further looking. Maybe revisit this later because this is a bit weird
+            lookX = x - 1
+            lookY = y
+            break
+          case INPUT.UP:
+            lookX = x
+            lookY = y - 1
+            break
+          case INPUT.RIGHT:
+            lookX = x + 1
+            lookY = y
+            break
+          case INPUT.DOWN:
+            lookX = x
+            lookY = y + 1
+            break
+        }
 
-        if (direction === INPUT.LEFT) {
-          // TODO: could we just do x-- here and skip all of these nested if statements?
-          // (tried it, and was looking through walls :/ I think the continues just prevent any further looking. Maybe revisit this later because this is a bit weird
-          shownBgMap[y][x - 1] = this._bgMap[y][x - 1]
-          shownItemMap[y][x - 1] = this._itemMap[y][x - 1]
-          if(this.isMoveable(this._movementImpedimentMap[y][x - 1])) {
-            x--
-          } else {
-            continue
-          }
-        } else if (direction === INPUT.UP) {
-          shownBgMap[y - 1][x] = this._bgMap[y - 1][x]
-          shownItemMap[y - 1][x] = this._itemMap[y - 1][x]
-          if(this.isMoveable(this._movementImpedimentMap[y - 1][x])) {
-            y--
-          } else {
-            continue
-          }
-        } else if (direction === INPUT.RIGHT) {
-          shownBgMap[y][x + 1] = this._bgMap[y][x + 1]
-          shownItemMap[y][x + 1] = this._itemMap[y][x + 1]
-          if (this.isMoveable(this._movementImpedimentMap[y][x + 1])) {
-            x++
-          } else {
-            continue
-          }
-        } else if (direction === INPUT.DOWN) {
-          shownBgMap[y + 1][x] = this._bgMap[y + 1][x]
-          shownItemMap[y + 1][x] = this._itemMap[y + 1][x]
-          if(this.isMoveable(this._movementImpedimentMap[y + 1][x])) {
-            y++
-          } else {
-            continue
-          }
+        shownBgMap[lookY][lookX] = this._bgMap[lookY][lookX]
+        shownItemMap[lookY][lookX] = this._itemMap[lookY][lookX]
+        fogOfWarMap[lookY][lookX] = false
+
+        switch (path[index]) {
+          case INPUT.LEFT:
+            if(this.isMoveable(this._movementImpedimentMap[lookY][lookX])) {
+              x--
+            } else {
+              continue
+            }
+          break
+          case INPUT.UP:
+            if(this.isMoveable(this._movementImpedimentMap[lookY][lookX])) {
+              y--
+            } else {
+              continue
+            }
+          break
+          case INPUT.RIGHT:
+            if(this.isMoveable(this._movementImpedimentMap[lookY][lookX])) {
+              x++
+            } else {
+              continue
+            }
+          break
+          case INPUT.DOWN:
+            if(this.isMoveable(this._movementImpedimentMap[lookY][lookX])) {
+              y++
+            } else {
+              continue
+            }
+          break
         }
       }
     })
 
-    return { shownBgMap, shownItemMap }
+    return { shownBgMap, shownItemMap, fogOfWarMap }
   }
 
   isMoveable (movementTile) {
