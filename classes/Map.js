@@ -293,7 +293,7 @@ module.exports = class Map {
     // everything is hidden until a path reveals it
     let shownBgMap = player.seenBgMap
     let shownItemMap = player.seenItemMap
-    let fogOfWarMap = this.coveredFogOfWarMap(true) // TODO: rename to "shown" to be inline with the others?
+    let fogOfWarMap = [...Array(this.height)].map(columnItem => Array(this.width).fill(true))
 
     // current tile
     shownBgMap[playerY][playerX] = this._bgMap[playerY][playerX]
@@ -355,69 +355,65 @@ module.exports = class Map {
       // TODO: return on a wall
       // change this from forEach so we can break from it when hitting a wall
       for (let index = 0; index < path.length; index++) {
-        let direction = path[index]
+        switch (path[index]) {
+          case INPUT.LEFT:
+            // TODO: could we just do x-- here and skip all of these nested if statements?
+            // (tried it, and was looking through walls :/ I think the continues just prevent any further looking. Maybe revisit this later because this is a bit weird
+            lookX = x - 1
+            lookY = y
+            break
+          case INPUT.UP:
+            lookX = x
+            lookY = y - 1
+            break
+          case INPUT.RIGHT:
+            lookX = x + 1
+            lookY = y
+            break
+          case INPUT.DOWN:
+            lookX = x
+            lookY = y + 1
+            break
+        }
 
-        // TODO: switch
+        shownBgMap[lookY][lookX] = this._bgMap[lookY][lookX]
+        shownItemMap[lookY][lookX] = this._itemMap[lookY][lookX]
+        fogOfWarMap[lookY][lookX] = false
 
-        if (direction === INPUT.LEFT) {
-          // TODO: could we just do x-- here and skip all of these nested if statements?
-          // (tried it, and was looking through walls :/ I think the continues just prevent any further looking. Maybe revisit this later because this is a bit weird
-          lookX = x - 1
-          lookY = y
-          shownBgMap[lookY][lookX] = this._bgMap[lookY][lookX]
-          shownItemMap[lookY][lookX] = this._itemMap[lookY][lookX]
-          fogOfWarMap[lookY][lookX] = false
-          if(this.isMoveable(this._movementImpedimentMap[lookY][lookX])) {
-            x--
-          } else {
-            continue
-          }
-        } else if (direction === INPUT.UP) {
-          lookX = x
-          lookY = y - 1
-          shownBgMap[lookY][lookX] = this._bgMap[lookY][lookX]
-          shownItemMap[lookY][lookX] = this._itemMap[lookY][lookX]
-          fogOfWarMap[lookY][lookX] = false
-          if(this.isMoveable(this._movementImpedimentMap[y - 1][x])) {
-            y--
-          } else {
-            continue
-          }
-        } else if (direction === INPUT.RIGHT) {
-          lookX = x + 1
-          lookY = y
-          shownBgMap[lookY][lookX] = this._bgMap[lookY][lookX]
-          shownItemMap[lookY][lookX] = this._itemMap[lookY][lookX]
-          fogOfWarMap[lookY][lookX] = false
-          if(this.isMoveable(this._movementImpedimentMap[lookY][lookX])) {
-            x++
-          } else {
-            continue
-          }
-        } else if (direction === INPUT.DOWN) {
-          lookX = x
-          lookY = y + 1
-          shownBgMap[lookY][lookX] = this._bgMap[lookY][lookX]
-          shownItemMap[lookY][lookX] = this._itemMap[lookY][lookX]
-          fogOfWarMap[lookY][lookX] = false
-          if(this.isMoveable(this._movementImpedimentMap[lookY][lookX])) {
-            y++
-          } else {
-            continue
-          }
+        switch (path[index]) {
+          case INPUT.LEFT:
+            if(this.isMoveable(this._movementImpedimentMap[lookY][lookX])) {
+              x--
+            } else {
+              continue
+            }
+          break
+          case INPUT.UP:
+            if(this.isMoveable(this._movementImpedimentMap[lookY][lookX])) {
+              y--
+            } else {
+              continue
+            }
+          break
+          case INPUT.RIGHT:
+            if(this.isMoveable(this._movementImpedimentMap[lookY][lookX])) {
+              x++
+            } else {
+              continue
+            }
+          break
+          case INPUT.DOWN:
+            if(this.isMoveable(this._movementImpedimentMap[lookY][lookX])) {
+              y++
+            } else {
+              continue
+            }
+          break
         }
       }
     })
 
     return { shownBgMap, shownItemMap, fogOfWarMap }
-  }
-
-  // TODO: hook up. This is only returning TRUE right now
-  // Should we even have this here? Why not just make it part of the function above?
-  // It will only be used above......
-  coveredFogOfWarMap (visibleMap) {
-    // anything visible is set as "true", otherwise "false"
-    return [...Array(this.height)].map(columnItem => Array(this.width).fill(true))
   }
 
   isMoveable (movementTile) {
