@@ -293,10 +293,12 @@ module.exports = class Map {
     // everything is hidden until a path reveals it
     let shownBgMap = player.seenBgMap
     let shownItemMap = player.seenItemMap
+    let fogOfWarMap = this.coveredFogOfWarMap(true) // TODO: rename to "shown" to be inline with the others?
 
     // current tile
     shownBgMap[playerY][playerX] = this._bgMap[playerY][playerX]
     shownItemMap[playerY][playerX] = this._itemMap[playerY][playerX]
+    fogOfWarMap[playerY][playerX] = false
 
     // oh no, we need to explicitly check diagonals or rework the view system
     // TODO: rework the view system to get diagonals in there. Maybe check for wall collisions on evens?
@@ -338,42 +340,67 @@ module.exports = class Map {
     paths.forEach(path => {
       let x = playerX
       let y = playerY
+      // TODO: oh man, I never program when drunk, but I am drunk now.
+      // This is here to hopefully make things more DRY, because I am very unhappy with how this section looks
+      // It just looks.... wrong.
+      // Also, another TODO: calm down with the comments. You hate comments. However, this project is
+      // very unlike any of your other projects: you are coding for fun without a plan and seeing where
+      // this ends up.
+      // TODO: put this comment into another file. lol
+      let lookX = null
+      let lookY = null
+
+      // TODO: fog of war need diagonals!
 
       // TODO: return on a wall
       // change this from forEach so we can break from it when hitting a wall
       for (let index = 0; index < path.length; index++) {
         let direction = path[index]
 
+        // TODO: switch
+
         if (direction === INPUT.LEFT) {
           // TODO: could we just do x-- here and skip all of these nested if statements?
           // (tried it, and was looking through walls :/ I think the continues just prevent any further looking. Maybe revisit this later because this is a bit weird
-          shownBgMap[y][x - 1] = this._bgMap[y][x - 1]
-          shownItemMap[y][x - 1] = this._itemMap[y][x - 1]
-          if(this.isMoveable(this._movementImpedimentMap[y][x - 1])) {
+          lookX = x - 1
+          lookY = y
+          shownBgMap[lookY][lookX] = this._bgMap[lookY][lookX]
+          shownItemMap[lookY][lookX] = this._itemMap[lookY][lookX]
+          fogOfWarMap[lookY][lookX] = false
+          if(this.isMoveable(this._movementImpedimentMap[lookY][lookX])) {
             x--
           } else {
             continue
           }
         } else if (direction === INPUT.UP) {
-          shownBgMap[y - 1][x] = this._bgMap[y - 1][x]
-          shownItemMap[y - 1][x] = this._itemMap[y - 1][x]
+          lookX = x
+          lookY = y - 1
+          shownBgMap[lookY][lookX] = this._bgMap[lookY][lookX]
+          shownItemMap[lookY][lookX] = this._itemMap[lookY][lookX]
+          fogOfWarMap[lookY][lookX] = false
           if(this.isMoveable(this._movementImpedimentMap[y - 1][x])) {
             y--
           } else {
             continue
           }
         } else if (direction === INPUT.RIGHT) {
-          shownBgMap[y][x + 1] = this._bgMap[y][x + 1]
-          shownItemMap[y][x + 1] = this._itemMap[y][x + 1]
-          if (this.isMoveable(this._movementImpedimentMap[y][x + 1])) {
+          lookX = x + 1
+          lookY = y
+          shownBgMap[lookY][lookX] = this._bgMap[lookY][lookX]
+          shownItemMap[lookY][lookX] = this._itemMap[lookY][lookX]
+          fogOfWarMap[lookY][lookX] = false
+          if(this.isMoveable(this._movementImpedimentMap[lookY][lookX])) {
             x++
           } else {
             continue
           }
         } else if (direction === INPUT.DOWN) {
-          shownBgMap[y + 1][x] = this._bgMap[y + 1][x]
-          shownItemMap[y + 1][x] = this._itemMap[y + 1][x]
-          if(this.isMoveable(this._movementImpedimentMap[y + 1][x])) {
+          lookX = x
+          lookY = y + 1
+          shownBgMap[lookY][lookX] = this._bgMap[lookY][lookX]
+          shownItemMap[lookY][lookX] = this._itemMap[lookY][lookX]
+          fogOfWarMap[lookY][lookX] = false
+          if(this.isMoveable(this._movementImpedimentMap[lookY][lookX])) {
             y++
           } else {
             continue
@@ -382,13 +409,13 @@ module.exports = class Map {
       }
     })
 
-    const fogOfWarMap = this.fogOfWarMap(true)
     return { shownBgMap, shownItemMap, fogOfWarMap }
   }
 
   // TODO: hook up. This is only returning TRUE right now
   // Should we even have this here? Why not just make it part of the function above?
-  fogOfWarMap (visibleMap) {
+  // It will only be used above......
+  coveredFogOfWarMap (visibleMap) {
     // anything visible is set as "true", otherwise "false"
     return [...Array(this.height)].map(columnItem => Array(this.width).fill(true))
   }
