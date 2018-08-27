@@ -61,13 +61,13 @@
               emitSingleKey(keyCode)
             } else if (keyCode === KEY.C) { // cancel
               if (previousKey === KEY.F) {
-                addMessage('<span class="failure">You curse your indecisiveness.</span>')
+                addMessage({payload: 'You curse your indecisiveness.', type: 'failure'})
               }
               previousKey = null
             } else if (isComboKey(keyCode)) { // start action
               previousKey = keyCode
               if (keyCode === KEY.F) {
-                addMessage('<span class="event">You notch an arrow. Which direction do you shoot?</span>')
+                addMessage({payload: 'You notch an arrow. Which direction do you shoot?', type: 'event'})
               }
             } else if (previousKey !== null && isSingleKey(keyCode)) { // finish action
               emitComboKey([previousKey, keyCode])

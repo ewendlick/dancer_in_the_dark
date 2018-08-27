@@ -3,6 +3,7 @@
 // need to update that user's viewport each move for any newly-placed/newly-removed items
 
 // Fake Static thing to keep track of shown items
+// // TODO: check and see if anything can write to this and rename it if possible
 let id = 1
 
 module.exports = class Item {

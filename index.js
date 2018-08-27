@@ -249,7 +249,10 @@ function fireProjectile (socketId, keyCode) {
   let x = player.x
   let y = player.y
   let currentTileIs = null
-  while(x >= 0 && x < MAP.width && y >= 0 && y < MAP.height) {
+  const UNMOVEABLE = -1
+  // while(MAP.isInMap(x, y)) { // immediately looks past the isInMap bounds :/
+  // TODO: MAP.isInMapBounds that checks for x > 0 && x < MAP.width && y > 0 && y < MAP.height
+  while(x > 0 && x < MAP.width && y > 0 && y < MAP.height) {
     if (keyCode === INPUT.LEFT) {
       x -= 1
     } else if (keyCode === INPUT.UP) {
@@ -260,12 +263,17 @@ function fireProjectile (socketId, keyCode) {
       y += 1
     }
 
-    if (MAP.bgMap[y][x] === MAP.TILE_TYPE.WALL) {
+    // TODO: wall check is wrong
+    // TODO: need a way to make MOVEABLE and UNMOVEABLE more accessible
+    // TODO: not DRY
+    //
+    if (MAP.movementImpedimentMap[y][x] === UNMOVEABLE) {
       // message to the person who fired it
       // TODO: Different messages depending on visibility?
+      // TODO: checking against moveability. this message may not be appropriate
       emitMessage('The arrow embeds itself in a wall', 'event', 'self', socketId)
       break
-    } else if (MAP.bgMap[y][x] === MAP.TILE_TYPE.TREASURE) {
+    } else if (MAP.isItemAt(x, y, MAP.TILE_TYPE.TREASURE)) {
       emitMessage('You hear a loud clang', 'event', 'all')
       break
     }
