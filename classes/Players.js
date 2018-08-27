@@ -110,7 +110,7 @@ module.exports = class Players {
 
   playersAt (x, y) {
     return this.players.filter(player => {
-      console.log('player: ' + player.x + ' ' + player.y + ' passed: ' + x + ' ' + y)
+      // console.log('player: ' + player.x + ' ' + player.y + ' passed: ' + x + ' ' + y)
       return player.x === x && player.y === y
     })
   }
