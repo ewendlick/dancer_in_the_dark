@@ -144,6 +144,12 @@
           updatePlayerNames()
         })
 
+        socket.on('movesRemaining', movesRemaining => {
+          // TODO: this would be a good place to pass the countdown timer and set it locally.
+          // TODO: clean this up when you feel like it
+          $('#moves-remaining').html(movesRemaining)
+        })
+
         socket.on('playersPublicInfo', passedPlayerPublicInfo => {
           // TODO: change this to include index as well as name??
           playersPublicInfo = passedPlayerPublicInfo
@@ -392,6 +398,7 @@
         </div>
         <div id="rules-container">
           <ul>
+            <li>MOVES REMAINING: <span id="moves-remaining"></span></li>
             <li>1 move per turn</li>
             <li>Arrow keys move</li>
             <li>Spacebar waits</li>

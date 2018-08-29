@@ -2,7 +2,7 @@ const app = require('express')()
 const http = require('http').Server(app)
 const io = require('socket.io')(http)
 const chalk = require('chalk')
-const port = process.env.PORT || 3000
+const port = process.env.PORT || 3001
 
 // TODO: sort this out with 'app'. This doesn't seem to work from 'app'
 const express = require('express')
@@ -54,6 +54,26 @@ io.on('connection', (socket) => {
 
     // TODO: figure out how to display that there are not enough players. Make it another emit??
     io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
+
+    // TODO: set the moves for the right players
+    PLAYERS.playersPublicInfo().forEach((player, index) => {
+      // if it is their turn
+      // hmmmmm
+      //
+// this.players[this.thisPlayersTurn()].id === socketId
+      console.log(PLAYERS.thisPlayersTurn())
+      console.log(index)
+      if (PLAYERS.thisPlayersTurn() === index) {
+        // TODO: how will we handle a time limit to their turn?
+        // emit the remaining time to the index.html and set it here
+        // When it ends here, we run the end of the turn
+        console.log('this players turn')
+        PLAYERS.startPlayersTurn(socket.id)
+        io.to(`${socket.id}`).emit('movesRemaining', PLAYERS.playersMovesRemaining(socket.id))
+      } else {
+        io.to(`${socket.id}`).emit('movesRemaining', 0)
+      }
+    })
   }
 
   socket.on('client single key', (msg) => {
@@ -72,7 +92,7 @@ io.on('connection', (socket) => {
       // TODO: using visible() and seen(), implement fog of war
 
       PLAYERS.playersPublicInfo().forEach(player => {
-        io.to(`${player.id}`).emit('players', visiblePlayersFor(socket.id))
+        io.to(`${player.socketId}`).emit('players', visiblePlayersFor(socket.id))
       })
       io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
     } else {
@@ -93,7 +113,7 @@ io.on('connection', (socket) => {
       //   io.to(`${socket.id}`).emit('map', seen(socket.id))
 
       //   PLAYERS.playersPublicInfo().forEach(player => {
-      //     io.to(`${player.id}`).emit('players', visiblePlayersFor(socket.id))
+      //     io.to(`${player.socketId}`).emit('players', visiblePlayersFor(socket.id))
       //   })
 
       io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
@@ -120,8 +140,8 @@ function emitMessage (payload, type = 'general', target = 'all', socketId = null
     // TODO: there is a way to send to all other people using socket.broadcast.emit.... but how to hook that up easily?
     // TODO: give this some thought. Could we pass the socket into here?
     PLAYERS.playersPublicInfo().forEach(player => {
-      if (player.id !== socketId) {
-        io.to(`${player.id}`).emit('message', message)
+      if (player.socketId !== socketId) {
+        io.to(`${player.socketId}`).emit('message', message)
       }
     })
   } else { // self
@@ -197,26 +217,55 @@ function handleSingleKey(socketId, keyCode) {
   // TODO: move back out into its own function
   if (keyCode === INPUT.LEFT && MAP.isMoveable(MAP.movementImpedimentMap[player.y][player.x - 1])) {
     console.log(chalk.green('(LEFT) Pressed'))
-    PLAYERS.setRelativePosition(socketId, -1, 0)
-    // PLAYERS.move(socketId)
-    PLAYERS.turnDone()
+    // if can move
+    if (PLAYERS.performMove(socketId, 1)) {
+      PLAYERS.setRelativePosition(socketId, -1, 0)
+    } else {
+      // insufficient moves
+    }
+
+    if (PLAYERS.playersMovesRemaining(socketId) <= 0) {
+      // no more moves remaining (check Players class.... this needs to be fixed when multiple moves can be performed at once
+      PLAYERS.turnDone()
+    }
   } else if (keyCode === INPUT.UP && MAP.isMoveable(MAP.movementImpedimentMap[player.y - 1][player.x])) {
     console.log(chalk.green('(UP) Pressed'))
-    PLAYERS.setRelativePosition(socketId, 0, -1)
-    // PLAYERS.move()
-    PLAYERS.turnDone()
+    if (PLAYERS.performMove(socketId, 1)) {
+      PLAYERS.setRelativePosition(socketId, 0, -1)
+    } else {
+      // insufficient moves
+    }
+
+    if (PLAYERS.playersMovesRemaining(socketId) <= 0) {
+      PLAYERS.turnDone()
+    }
   } else if (keyCode === INPUT.RIGHT && MAP.isMoveable(MAP.movementImpedimentMap[player.y][player.x + 1])) {
     console.log(chalk.green('(RIGHT) Pressed'))
-    PLAYERS.setRelativePosition(socketId, 1, 0)
-    // PLAYERS.move()
-    PLAYERS.turnDone()
+    if (PLAYERS.performMove(socketId, 1)) {
+      PLAYERS.setRelativePosition(socketId, 1, 0)
+    } else {
+      // insufficient moves
+    }
+
+    // TODO:.... why not put this whole thing into the PLAYERS class?
+    // TODO: moveDone
+    if (PLAYERS.playersMovesRemaining(socketId) <= 0) {
+      PLAYERS.turnDone()
+    }
   } else if (keyCode === INPUT.DOWN && MAP.isMoveable(MAP.movementImpedimentMap[player.y + 1][player.x])) {
     console.log(chalk.green('(DOWN) Pressed'))
-    PLAYERS.setRelativePosition(socketId, 0, 1)
-    // PLAYERS.move()
-    PLAYERS.turnDone()
+    if (PLAYERS.performMove(socketId, 1)) {
+      PLAYERS.setRelativePosition(socketId, 0, 1)
+    } else {
+      // insufficient moves
+    }
+
+    if (PLAYERS.playersMovesRemaining(socketId) <= 0) {
+      PLAYERS.turnDone()
+    }
   } else if (keyCode === INPUT.SPACEBAR) {
     console.log('spacebar') // skip their turn
+    // TODO: possibly implement a listen system
     PLAYERS.turnDone()
   } else {
     // Do nothing. Do not end the player's turn
@@ -234,8 +283,15 @@ function handleComboKey(socketId, keyCodes) {
 
   // TODO: create a file shared between both index.html and index.js for INPUT/KEY information
   if (keyCodes[0] === INPUT.F) {
-    fireProjectile(socketId, keyCodes[1])
-    PLAYERS.turnDone()
+    if (PLAYERS.performMove(socketId, 1)) {
+      fireProjectile(socketId, keyCodes[1])
+    } else {
+      // insufficient moves
+    }
+
+    if (PLAYERS.playersMovesRemaining(socketId) <= 0) {
+      PLAYERS.turnDone()
+    }
   }
 }
 
