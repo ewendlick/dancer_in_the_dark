@@ -57,21 +57,15 @@ io.on('connection', (socket) => {
 
     // TODO: set the moves for the right players
     PLAYERS.playersPublicInfo().forEach((player, index) => {
-      // if it is their turn
-      // hmmmmm
-      //
-// this.players[this.thisPlayersTurn()].id === socketId
-      console.log(PLAYERS.thisPlayersTurn())
-      console.log(index)
       if (PLAYERS.thisPlayersTurn() === index) {
         // TODO: how will we handle a time limit to their turn?
         // emit the remaining time to the index.html and set it here
         // When it ends here, we run the end of the turn
         console.log('this players turn')
         PLAYERS.startPlayersTurn(socket.id)
-        io.to(`${socket.id}`).emit('movesRemaining', PLAYERS.playersMovesRemaining(socket.id))
+        io.to(`${player.socketId}`).emit('movesRemaining', PLAYERS.playersMovesRemaining(player.socketId))
       } else {
-        io.to(`${socket.id}`).emit('movesRemaining', 0)
+        io.to(`${player.socketId}`).emit('movesRemaining', 0)
       }
     })
   }
@@ -89,12 +83,28 @@ io.on('connection', (socket) => {
 
       io.to(`${socket.id}`).emit('map', seen(socket.id))
 
-      // TODO: using visible() and seen(), implement fog of war
-
       PLAYERS.playersPublicInfo().forEach(player => {
         io.to(`${player.socketId}`).emit('players', visiblePlayersFor(socket.id))
       })
+
+      // New turn after no more moves
+
       io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
+      // TODO: set the moves for the right players
+      PLAYERS.playersPublicInfo().forEach((player, index) => {
+        // console.log(PLAYERS.thisPlayersTurn())
+        // console.log(index)
+        if (PLAYERS.thisPlayersTurn() === index) {
+          // TODO: how will we handle a time limit to their turn?
+          // emit the remaining time to the index.html and set it here
+          // When it ends here, we run the end of the turn
+          console.log('this players turn')
+          io.to(`${player.socketId}`).emit('movesRemaining', PLAYERS.playersMovesRemaining(player.socketId))
+        } else {
+          // TODO: look into this. This won't work for multiple players moving at the same time in situations with more than 2 players
+          io.to(`${player.socketId}`).emit('movesRemaining', 0)
+        }
+      })
     } else {
       // Testing purposes
       console.log(chalk.red(`Rejected input from: ${socket.id} (Not their turn/Insufficient players)`))

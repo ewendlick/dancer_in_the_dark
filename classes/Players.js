@@ -79,20 +79,19 @@ module.exports = class Players {
   }
 
   // TODO: allow multiple players to move at the same time
+  // rename to startFirstPlayersTurn
   startPlayersTurn (socketId) {
     // Provide moves to a player
     this.players = this.players.map(player => {
       if (player.socketId === socketId) {
-        player.movesRemaining = player.status.speed
+        player.movesRemaining = player.status.movement
       }
-      // TODO: is there a better way to do this?
       return player
     })
   }
 
   playersMovesRemaining (socketId) {
-    console.log('playersMovesRemaining')
-    console.log(this.thisPlayer(socketId))
+    console.log(socketId + ' playersMovesRemaining: ' + this.thisPlayer(socketId).movesRemaining)
     return this.thisPlayer(socketId).movesRemaining
   }
 
@@ -103,7 +102,9 @@ module.exports = class Players {
     // moves need to match up with the current player's turn (how do we handle multiple players going at once?
     // TODO: better variable names
     const currentMovesRemaining = this.playersMovesRemaining(socketId)
+    console.log('current:' + currentMovesRemaining + ' usedMovementPoints:' + usedMovementPoints)
     const movesRemaining = currentMovesRemaining - usedMovementPoints
+    console.log('movesRemaining in performMove:' + movesRemaining)
 
     // Insufficient moves
     if (movesRemaining < 0) {
@@ -114,6 +115,8 @@ module.exports = class Players {
       // TODO: updating players should be a general function. This is so un-DRY
       this.players = this.players.map(player => {
         if (player.socketId === socketId) {
+          console.log('loooop')
+          console.log(movesRemaining)
           player.movesRemaining = movesRemaining
         }
         return player
@@ -213,8 +216,6 @@ module.exports = class Players {
   // TODO: change to targetPlayer? playerById? currentPlayer?
   thisPlayer (socketId) {
     return this.players.find(player => {
-      // TODO: something is deleting all players???
-      console.log(Object.keys(player))
       return player.socketId === socketId
     })
   }
@@ -225,35 +226,13 @@ module.exports = class Players {
     })
   }
 
-  // // TODO
-  // // TODO: functions for each of the player's possible actions
-  // function playerListen (socketId) {
-  //   // Skips the player's movement turn, listens for other players.
-  //   // Returns a rough direction
-  // }
-
-
-  // TODO: seperate actions? Have actions subtract different amounts? Rename this to "action"?
-  // move (socketId) {
-  //   const movesRemaining = players.find(player => {
-  //     return player.socketId = socketId
-  //   }).movesRemaining
-
-  //   if (movesRemaining > 0) {
-  //     players = players.map(player => {
-  //       if (player.socketId === socketId) {
-  //         player.movesRemaining = player.movesRemaining - 1
-  //       }
-  //       // TODO: is there a better way to do this?
-  //       return player
-  //     })
-  //   }
-
-  //   return movesRemaining > 0
-  // }
-
   turnDone () {
     this.turnCounter++
+    // assign moves to the next player
+    // I don't know if this should be broken into its own function or not, but one this is clear:
+    // This all needs to have the entire process mapped out and thoroughly considered
+    const turnIndex = this.thisPlayersTurn()
+    this.players[turnIndex].movesRemaining = this.players[turnIndex].status.movement
   }
 
   // TODO: more generic function for adding and removing anything??

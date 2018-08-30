@@ -140,11 +140,13 @@
         })
 
         socket.on('turn', passedTurn => {
+          console.log('passedTurn:' + passedTurn)
           turn = passedTurn
           updatePlayerNames()
         })
 
         socket.on('movesRemaining', movesRemaining => {
+          console.log('movesRemaining:' + movesRemaining)
           // TODO: this would be a good place to pass the countdown timer and set it locally.
           // TODO: clean this up when you feel like it
           $('#moves-remaining').html(movesRemaining)
