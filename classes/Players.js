@@ -1,6 +1,7 @@
 const random = require('../lib/random')
 
 const printOut = require('../lib/printOut') // DELETE, only used for testing a few things now
+const chalk = require('chalk')
 
 module.exports = class Players {
   // TODO: consider moving this to a Player class
@@ -102,9 +103,7 @@ module.exports = class Players {
     // moves need to match up with the current player's turn (how do we handle multiple players going at once?
     // TODO: better variable names
     const currentMovesRemaining = this.playersMovesRemaining(socketId)
-    console.log('current:' + currentMovesRemaining + ' usedMovementPoints:' + usedMovementPoints)
     const movesRemaining = currentMovesRemaining - usedMovementPoints
-    console.log('movesRemaining in performMove:' + movesRemaining)
 
     // Insufficient moves
     if (movesRemaining < 0) {
@@ -115,8 +114,7 @@ module.exports = class Players {
       // TODO: updating players should be a general function. This is so un-DRY
       this.players = this.players.map(player => {
         if (player.socketId === socketId) {
-          console.log('loooop')
-          console.log(movesRemaining)
+          console.log(socketId + ': movesRemaining=' + chalk.magenta(movesRemaining))
           player.movesRemaining = movesRemaining
         }
         return player
@@ -232,6 +230,9 @@ module.exports = class Players {
     // I don't know if this should be broken into its own function or not, but one this is clear:
     // This all needs to have the entire process mapped out and thoroughly considered
     const turnIndex = this.thisPlayersTurn()
+    if (this.players[turnIndex] === undefined) {
+      return // The timer caused this to be called before we had enough players
+    }
     this.players[turnIndex].movesRemaining = this.players[turnIndex].status.movement
   }
 

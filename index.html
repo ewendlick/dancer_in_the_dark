@@ -46,6 +46,8 @@
         const $messageContainer = $('#message-container')
         const $rulesContainer = $('#rules-container')
         const $mapContainer = $('#map-container')
+        const $movesRemaining = $('#moves-remaining')
+        const $movementTimeRemaining = $('#movement-time-remaining')
 
         function isAllowedKey (keyCode) {
           return ALLOWED_KEYCODES.includes(keyCode)
@@ -124,13 +126,9 @@
         })
 
         socket.on('players', players => {
-          // each player needs to be drawn, or just draw the updated player?????
-          // TODO: need to clear before we draw
-          // Should we store the array passed back and redraw the table?
-
           // TODO: Need a better way of handling how players are drawn
-          $mapContainer.find('tile player1').html('')
-          $mapContainer.find('tile player2').html('')
+          // We are currently updating player position despite them needing to be invisible
+          $mapContainer.find('.player').remove()
 
           players.forEach((player, playerId) => {
             drawPlayer(playerId, player.x, player.y)
@@ -153,11 +151,23 @@
         })
 
         socket.on('movesRemaining', movesRemaining => {
-          console.log('movesRemaining:' + movesRemaining)
           // TODO: this would be a good place to pass the countdown timer and set it locally.
           // TODO: clean this up when you feel like it
-          $('#moves-remaining').html(movesRemaining)
+          $movesRemaining.html(movesRemaining)
         })
+
+        socket.on('movementTimer', movementTimerSecondsRemaining => {
+          // Set the movement timer, and show whose turn it is for
+          $movementTimeRemaining.html(movementTimerSecondsRemaining)
+        })
+
+        const timerTick = () => {
+          let remainingSeconds = parseInt($movementTimeRemaining.html())
+          if (remainingSeconds > 0) {
+            $movementTimeRemaining.html(remainingSeconds - 1)
+          }
+        }
+        setInterval(timerTick, 1000)
 
         socket.on('playersPublicInfo', passedPlayerPublicInfo => {
           // TODO: change this to include index as well as name??
@@ -400,9 +410,14 @@
           <ul>
           </ul>
         </div>
+        <div id="moves-container">
+          <ul>
+            <li>Moves remaining: <span id="moves-remaining"></span></li>
+            <li>Time remaining: <span id="movement-time-remaining"></span>s</li>
+          </ul>
+        </div>
         <div id="rules-container">
           <ul>
-            <li>MOVES REMAINING: <span id="moves-remaining"></span></li>
             <li>1 move per turn</li>
             <li>Arrow keys move</li>
             <li>Spacebar waits</li>

@@ -14,6 +14,22 @@ const players = require('./classes/Players')
 const PLAYERS = new players
 const INPUT = require('./lib/input')
 const random = require('./lib/random')
+const DEFAULT_TIME_SECONDS = 10
+
+let timerSeconds = 0
+const timerTick = () => {
+  if (timerSeconds > 0) {
+    timerSeconds--
+  } else {
+    PLAYERS.turnDone()
+    resetTimer()
+  }
+}
+
+function resetTimer(seconds = DEFAULT_TIME_SECONDS) {
+  io.emit('movementTimer', seconds)
+  timerSeconds = seconds
+}
 
 printOut.floorToWallPercentage(MAP.bgMap)
 
@@ -55,13 +71,13 @@ io.on('connection', (socket) => {
     // TODO: figure out how to display that there are not enough players. Make it another emit??
     io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
 
+    // TODO: hook this up to give different players more movement time
+    io.emit('movementTimer', DEFAULT_TIME_SECONDS)
+    setInterval(timerTick, 1000)
+
     // TODO: set the moves for the right players
     PLAYERS.playersPublicInfo().forEach((player, index) => {
       if (PLAYERS.thisPlayersTurn() === index) {
-        // TODO: how will we handle a time limit to their turn?
-        // emit the remaining time to the index.html and set it here
-        // When it ends here, we run the end of the turn
-        console.log('this players turn')
         PLAYERS.startPlayersTurn(socket.id)
         io.to(`${player.socketId}`).emit('movesRemaining', PLAYERS.playersMovesRemaining(player.socketId))
       } else {
@@ -87,18 +103,18 @@ io.on('connection', (socket) => {
         io.to(`${player.socketId}`).emit('players', visiblePlayersFor(socket.id))
       })
 
-      // New turn after no more moves
-
       io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
+
+      // TODO: Do we want to keep this?
+      // This sets the timer back to 10 seconds after each move
+      io.emit('movementTimer', DEFAULT_TIME_SECONDS)
+
       // TODO: set the moves for the right players
       PLAYERS.playersPublicInfo().forEach((player, index) => {
-        // console.log(PLAYERS.thisPlayersTurn())
-        // console.log(index)
         if (PLAYERS.thisPlayersTurn() === index) {
           // TODO: how will we handle a time limit to their turn?
           // emit the remaining time to the index.html and set it here
           // When it ends here, we run the end of the turn
-          console.log('this players turn')
           io.to(`${player.socketId}`).emit('movesRemaining', PLAYERS.playersMovesRemaining(player.socketId))
         } else {
           // TODO: look into this. This won't work for multiple players moving at the same time in situations with more than 2 players
@@ -176,14 +192,6 @@ function visiblePlayersFor (socketId) {
   return PLAYERS.visiblePlayers(visible(socketId).shownBgMap)
 }
 
-
-// TODO
-// TODO: functions for each of the player's possible actions
-// function playerListen (socketId) {
-//   // Skips the player's movement turn, listens for other players.
-//   // Returns a rough direction
-// }
-
 function resolveTile (socketId) {
   const player = PLAYERS.thisPlayer(socketId)
 
@@ -231,52 +239,57 @@ function handleSingleKey(socketId, keyCode) {
     if (PLAYERS.performMove(socketId, 1)) {
       PLAYERS.setRelativePosition(socketId, -1, 0)
     } else {
-      // insufficient moves
+      emitMessage('Insufficient moves remaining', 'failure', 'self', socketId)
     }
 
     if (PLAYERS.playersMovesRemaining(socketId) <= 0) {
       // no more moves remaining (check Players class.... this needs to be fixed when multiple moves can be performed at once
       PLAYERS.turnDone()
+      resetTimer()
     }
   } else if (keyCode === INPUT.UP && MAP.isMoveable(MAP.movementImpedimentMap[player.y - 1][player.x])) {
     console.log(chalk.green('(UP) Pressed'))
     if (PLAYERS.performMove(socketId, 1)) {
       PLAYERS.setRelativePosition(socketId, 0, -1)
     } else {
-      // insufficient moves
+      emitMessage('Insufficient moves remaining', 'failure', 'self', socketId)
     }
 
     if (PLAYERS.playersMovesRemaining(socketId) <= 0) {
       PLAYERS.turnDone()
+      resetTimer()
     }
   } else if (keyCode === INPUT.RIGHT && MAP.isMoveable(MAP.movementImpedimentMap[player.y][player.x + 1])) {
     console.log(chalk.green('(RIGHT) Pressed'))
     if (PLAYERS.performMove(socketId, 1)) {
       PLAYERS.setRelativePosition(socketId, 1, 0)
     } else {
-      // insufficient moves
+      emitMessage('Insufficient moves remaining', 'failure', 'self', socketId)
     }
 
     // TODO:.... why not put this whole thing into the PLAYERS class?
     // TODO: moveDone
     if (PLAYERS.playersMovesRemaining(socketId) <= 0) {
       PLAYERS.turnDone()
+      resetTimer()
     }
   } else if (keyCode === INPUT.DOWN && MAP.isMoveable(MAP.movementImpedimentMap[player.y + 1][player.x])) {
     console.log(chalk.green('(DOWN) Pressed'))
     if (PLAYERS.performMove(socketId, 1)) {
       PLAYERS.setRelativePosition(socketId, 0, 1)
     } else {
-      // insufficient moves
+      emitMessage('Insufficient moves remaining', 'failure', 'self', socketId)
     }
 
     if (PLAYERS.playersMovesRemaining(socketId) <= 0) {
       PLAYERS.turnDone()
+      resetTimer()
     }
   } else if (keyCode === INPUT.SPACEBAR) {
     console.log('spacebar') // skip their turn
     // TODO: possibly implement a listen system
     PLAYERS.turnDone()
+    resetTimer()
   } else {
     // Do nothing. Do not end the player's turn
   }
