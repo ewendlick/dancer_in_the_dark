@@ -10,12 +10,18 @@
     <style></style>
   </head>
   <body>
-    <!-- include these in the project -->
     <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <script src="js/simpleCookie.js"></script>
     <script>
+      let isSpriteMode = getCookie('spriteMode') === 'true'
+      // run this from the command line to turn on sprites
+      function setSpriteMode (spriteMode = 'true') {
+        setCookie('spriteMode', spriteMode, 1)
+        isSpriteMode = spriteMode === 'true'
+      }
+
       $(function () {
-        const isAtHome = false
 
         const socket = io()
 
@@ -39,6 +45,8 @@
         const $messageContainer = $('#message-container')
         const $rulesContainer = $('#rules-container')
         const $mapContainer = $('#map-container')
+        const $movesRemaining = $('#moves-remaining')
+        const $movementTimeRemaining = $('#movement-time-remaining')
 
         function isAllowedKey (keyCode) {
           return ALLOWED_KEYCODES.includes(keyCode)
@@ -97,10 +105,8 @@
           let typeClass = allowedTypes.includes(message.type) ? message.type : 'general'
           $messageContainer.find('ul').append(`<li><span class="${typeClass}">${message.payload}</span></li>`)
 
-          const messageLimit = 2
-          // remove some messages if there are too many?
+          const messageLimit = 20
           if ($messageContainer.find('li').length > messageLimit) {
-            // TODO: cache the li result?
             $messageContainer.find('li').first().remove()
           }
           // TODO: animate a flash when a new message is added
@@ -110,20 +116,14 @@
           }, 100)
         }
 
-        // TODO: receives bgMap, itemMap, and fogOfWar
         socket.on('map', map => {
-          // TODO: clean up, create viewport, jQuery cache these
           $mapContainer.html(buildMap(map))
         })
 
         socket.on('players', players => {
-          // each player needs to be drawn, or just draw the updated player?????
-          // TODO: need to clear before we draw
-          // Should we store the array passed back and redraw the table?
-
           // TODO: Need a better way of handling how players are drawn
-          $mapContainer.find('tile player1').html('')
-          $mapContainer.find('tile player2').html('')
+          // We are currently updating player position despite them needing to be invisible
+          $mapContainer.find('.player').remove()
 
           players.forEach((player, playerId) => {
             drawPlayer(playerId, player.x, player.y)
@@ -144,6 +144,25 @@
           updatePlayerNames()
         })
 
+        socket.on('movesRemaining', movesRemaining => {
+          // TODO: this would be a good place to pass the countdown timer and set it locally.
+          // TODO: clean this up when you feel like it
+          $movesRemaining.html(movesRemaining)
+        })
+
+        socket.on('movementTimer', movementTimerSecondsRemaining => {
+          // Set the movement timer, and show whose turn it is for
+          $movementTimeRemaining.html(movementTimerSecondsRemaining)
+        })
+
+        const timerTick = () => {
+          let remainingSeconds = parseInt($movementTimeRemaining.html())
+          if (remainingSeconds > 0) {
+            $movementTimeRemaining.html(remainingSeconds - 1)
+          }
+        }
+        setInterval(timerTick, 1000)
+
         socket.on('playersPublicInfo', passedPlayerPublicInfo => {
           // TODO: change this to include index as well as name??
           playersPublicInfo = passedPlayerPublicInfo
@@ -162,7 +181,7 @@
           let isTurn = false
           playersPublicInfo.forEach((player, index) => {
             classes = []
-            isYou = index === playersPublicInfo.map(ppi => ppi.id).indexOf(playerId)
+            isYou = index === playersPublicInfo.map(ppi => ppi.socketId).indexOf(playerId)
             isTurn = index === turn
             if (isYou) {
               classes.push('you')
@@ -222,16 +241,10 @@
           return itemString
         }
 
-        // TODO: check a cookie for this value
-        // run this from the command line to turn on sprites
-        function home () {
-          isAtHome = true
-        }
-
         // TODO: probably want to break this out into another file at some point in time. This will get large
         function tileBgClass (tileCode) {
           // For developing where we don't want the sprites shown, tee hee
-          if (!isAtHome) {
+          if (!isSpriteMode) {
             if (tileCode === ' ') {
               return 'floor'
             } else if (tileCode === '0') {
@@ -249,8 +262,6 @@
             return 'basic_' + ('─│└┌┐┘├┤┬┴┼?.'.indexOf(tileCode) + 1)
           }
         }
-
-        // function tileItems (
       })
     </script>
     <style>
@@ -340,7 +351,7 @@
     #message-container {
       overflow-y: scroll;
       float: left;
-      width: 60%;
+      width: 40%;
       height: 100px;
       background-color: #fafbfc;
       font-size: 16px;
@@ -369,6 +380,16 @@
       color: #d8a931;
     }
 
+    #moves-container {
+      float: left;
+      min-width: 160px;
+      width: 20%;
+      height: 100px;
+      background-color: #fafbfc;
+      font-size: 16px;
+      box-shadow: inset 0 1px 2px rgba(27,31,35,0.075);
+    }
+
     #rules-container {
       overflow-y: scroll;
       float: left;
@@ -390,9 +411,15 @@
           <ul>
           </ul>
         </div>
+        <div id="moves-container">
+          <ul>
+            <li>Moves remaining: <span id="moves-remaining"></span></li>
+            <li>Time remaining: <span id="movement-time-remaining"></span>s</li>
+          </ul>
+        </div>
         <div id="rules-container">
           <ul>
-            <li>1 move per turn</li>
+            <li>3 moves per turn</li>
             <li>Arrow keys move</li>
             <li>Spacebar waits</li>
             <li>F and then arrow key (F)ires an arrow in that direction</li>

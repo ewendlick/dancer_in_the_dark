@@ -1,8 +1,10 @@
 const random = require('../lib/random')
 
 const printOut = require('../lib/printOut') // DELETE, only used for testing a few things now
+const chalk = require('chalk')
 
 module.exports = class Players {
+  // TODO: consider moving this to a Player class
   constructor () {
     this.players = [] // TODO: this isn't a const. rename
     this.ALLOWED_PLAYERS = [0, 1] // TODO: change this to an int
@@ -16,10 +18,10 @@ module.exports = class Players {
       movesRemaining: 0,
       inventory: {
         arrows: 2, // (umimplemented)
-        treasure: 0 // (unimplemented)
+        treasure: 0
       },
       status: {
-        movement: 3, // unimplemented
+        movement: 3,
         viewDistance: 3, // unimplemented
         stunned: 0 // turns until not stunned (unimplemented)
       }
@@ -34,10 +36,7 @@ module.exports = class Players {
     return this.ALLOWED_PLAYERS[(this.turnCounter + 1) % this.ALLOWED_PLAYERS.length]
   }
 
-  addPlayer (id, seenBgMap, seenItemMap, x = 1, y = 1 ) {
-    // console.log('--addPlayer')
-    // console.log(seenBgMap)
-    // TODO: possibly rename "id" to "socketId"
+  addPlayer (socketId, seenBgMap, seenItemMap, x = 1, y = 1 ) {
     let playerStats = this.defaultPlayerStats
     // TODO: is there a better way of doing this?
     playerStats.seenBgMap = seenBgMap
@@ -45,7 +44,7 @@ module.exports = class Players {
     playerStats.name = random.name(true)
     playerStats.x = x
     playerStats.y = y
-    this.players.push({ id, ...playerStats })
+    this.players.push({ socketId: socketId, ...playerStats })
   }
 
   resetPlayers (x = 1, y = 1) {
@@ -56,13 +55,13 @@ module.exports = class Players {
     playerStats.x = x
     playerStats.y = y
     this.players = this.players.map(player => {
-      return { id: player.id, ...playerStats }
+      return { socketId: player.socketId, ...playerStats }
     })
   }
 
   removePlayer (socketId) {
     this.players = this.players.filter(player => {
-      return player.id !== socketId
+      return player.socketId !== socketId
     })
   }
 
@@ -71,14 +70,60 @@ module.exports = class Players {
     // TODO: may need to reevaluate this: do we need to check if the socket id matches the first two players
     // if we are checking against players that are allowed to play?
     return this.players[1] !== undefined &&
-      (socketId === this.players[0].id || socketId === this.players[1].id) &&
-      this.players[this.thisPlayersTurn()].id === socketId
+      (socketId === this.players[0].socketId || socketId === this.players[1].socketId) &&
+      this.players[this.thisPlayersTurn()].socketId === socketId
   }
 
   // TODO: would it make sense to store the socket.id of the player whose turn it is in here??
   playersTurn (socketId) {
     return this.thisPlayerIndex(socketId)
   }
+
+  // TODO: allow multiple players to move at the same time
+  // rename to startFirstPlayersTurn
+  startPlayersTurn (socketId) {
+    // Provide moves to a player
+    this.players = this.players.map(player => {
+      if (player.socketId === socketId) {
+        player.movesRemaining = player.status.movement
+      }
+      return player
+    })
+  }
+
+  playersMovesRemaining (socketId) {
+    console.log(socketId + ' playersMovesRemaining: ' + this.thisPlayer(socketId).movesRemaining)
+    return this.thisPlayer(socketId).movesRemaining
+  }
+
+  // TODO: how can we know if this succeeded??
+  // Return true if move succeeded, false if not (like, they cannot move in a direction, or an action takes
+  // too many move points)
+  performMove (socketId, usedMovementPoints = 1) {
+    // moves need to match up with the current player's turn (how do we handle multiple players going at once?
+    // TODO: better variable names
+    const currentMovesRemaining = this.playersMovesRemaining(socketId)
+    const movesRemaining = currentMovesRemaining - usedMovementPoints
+
+    // Insufficient moves
+    if (movesRemaining < 0) {
+      // TODO: how do we convey failure to move due to insufficient moves? Create a canMove(socketId, movementPoints) function?
+      return false
+    } else {
+
+      // TODO: updating players should be a general function. This is so un-DRY
+      this.players = this.players.map(player => {
+        if (player.socketId === socketId) {
+          console.log(socketId + ': movesRemaining=' + chalk.magenta(movesRemaining))
+          player.movesRemaining = movesRemaining
+        }
+        return player
+      })
+      return true // TODO: ahhhhh, this will be difficult after moves can be more than 1
+    }
+  }
+
+  // TODO: all players moved
 
   nextPlayersTurn (socketId) {
     if (this.thisPlayerIndex(socketId) + 1 >= this.playerCount()) {
@@ -91,7 +136,7 @@ module.exports = class Players {
   // TODO: come up with a name when these should be plural. I have "playersTurn" which is a possessive "player's" :/
   playersPublicInfo () {
     return this.players.map(player => {
-      return { id: player.id, name: player.name }
+      return { socketId: player.socketId, name: player.name }
     })
   }
 
@@ -115,15 +160,11 @@ module.exports = class Players {
     })
   }
 
-  // setPosition (socketId, x, y) {
-  // }
-
   // TODO: just pass in the map and split it inside of here? (Such a better idea now)
   updateSeenMap (socketId, visibleBgMap, visibleItemMap, fogOfWarMap) {
     // add the visiblemap to the particular player's seenBgMap
     // fog of war tiles are appended with.... what? '░'?
     // update anything that is not '0' (hidden)
-    // console.log('----')
     let seenBgMap = this.thisPlayer(socketId).seenBgMap
     let seenItemMap = this.thisPlayer(socketId).seenItemMap
     // console.log(seenBgMap)
@@ -168,58 +209,33 @@ module.exports = class Players {
 
   // TODO: change to targetPlayer? playerById? currentPlayer?
   thisPlayer (socketId) {
-    return this.players.find(player => player.id === socketId)
+    return this.players.find(player => {
+      return player.socketId === socketId
+    })
   }
 
   thisPlayerIndex (socketId) {
-    return this.players.findIndex(player => player.id === socketId)
+    return this.players.findIndex(player => {
+      return player.socketId === socketId
+    })
   }
-
-  // // TODO
-  // // TODO: functions for each of the player's possible actions
-  // function playerListen (socketId) {
-  //   // Skips the player's movement turn, listens for other players.
-  //   // Returns a rough direction
-  // }
-
-  // Assign the number of moves remaining based on "speed" attribute
-  // turnStart (socketId) {
-  //   players = players.map(player => {
-  //     if (player.id === socketId) {
-  //       player.movesRemaining = player.status.speed
-  //     }
-  //     // TODO: is there a better way to do this?
-  //     return player
-  //   })
-  // }
-
-  // TODO: seperate actions? Have actions subtract different amounts? Rename this to "action"?
-  // move (socketId) {
-  //   const movesRemaining = players.find(player => {
-  //     return player.id = socketId
-  //   }).movesRemaining
-
-  //   if (movesRemaining > 0) {
-  //     players = players.map(player => {
-  //       if (player.id === socketId) {
-  //         player.movesRemaining = player.movesRemaining - 1
-  //       }
-  //       // TODO: is there a better way to do this?
-  //       return player
-  //     })
-  //   }
-
-  //   return movesRemaining > 0
-  // }
 
   turnDone () {
     this.turnCounter++
+    // assign moves to the next player
+    // I don't know if this should be broken into its own function or not, but one this is clear:
+    // This all needs to have the entire process mapped out and thoroughly considered
+    const turnIndex = this.thisPlayersTurn()
+    if (this.players[turnIndex] === undefined) {
+      return // The timer caused this to be called before we had enough players
+    }
+    this.players[turnIndex].movesRemaining = this.players[turnIndex].status.movement
   }
 
   // TODO: more generic function for adding and removing anything??
   addInventory (socketId, key, value) {
     this.players = this.players.map(player => {
-      if (player.id === socketId) {
+      if (player.socketId === socketId) {
         player.inventory[key] += value
       }
       // TODO: is there a better way to do this?
@@ -232,7 +248,7 @@ module.exports = class Players {
   viewInventory (socketId, key) {
     // TODO: handle null, etc
     return this.players.find(player => {
-      if (player.id === socketId) {
+      if (player.socketId === socketId) {
         return player
       }
     }).inventory[key]
@@ -242,7 +258,7 @@ module.exports = class Players {
   // viewStatus (socketId, key) {
   //   // TODO: handle null, etc
   //   return this.players.find(player => {
-  //     if (player.id === socketId) {
+  //     if (player.socketId === socketId) {
   //       return player
   //     }
   //   }).status[key]
