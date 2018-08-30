@@ -160,15 +160,11 @@ module.exports = class Players {
     })
   }
 
-  // setPosition (socketId, x, y) {
-  // }
-
   // TODO: just pass in the map and split it inside of here? (Such a better idea now)
   updateSeenMap (socketId, visibleBgMap, visibleItemMap, fogOfWarMap) {
     // add the visiblemap to the particular player's seenBgMap
     // fog of war tiles are appended with.... what? '░'?
     // update anything that is not '0' (hidden)
-    // console.log('----')
     let seenBgMap = this.thisPlayer(socketId).seenBgMap
     let seenItemMap = this.thisPlayer(socketId).seenItemMap
     // console.log(seenBgMap)
