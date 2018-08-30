@@ -13,11 +13,6 @@ const UNMOVEABLE = -1
  * items
  */
 
-// MAP will not have players
-
-
-
-// TODO: check and see if we may name this "Map"
 module.exports = class Map {
   constructor () {
     // TODO: I want this to be readonly static
@@ -30,20 +25,20 @@ module.exports = class Map {
       UNSEEN: '0' // unknown/unseen, no fog of war
     }
     // TODO: Need to make this a const. May not be possible in JS...
-    this.originalBgMap = maps.treasureHuntBg // TODO: pass in? Randomly load different ones?
-    this._movementImpedimentMap = maps.treasureHuntMovementImpediment
+    this._originalBgMap = maps.trapWorldBg // TODO: pass in? Randomly load different ones?
+    this._movementImpedimentMap = maps.trapWorldMovementImpediment
     // TODO: want to generate maps in the future.... maybe
-    this._height = this.originalBgMap.length
-    this._width = this.originalBgMap[0].length
+    this._height = this._originalBgMap.length
+    this._width = this._originalBgMap[0].length
     // TODO: rename these "map" things "layer"
-    this._bgMap = this.originalBgMap
+    this._bgMap = this._originalBgMap
     this._itemMap = [...Array(this.height)].map(columnItem => Array(this.width).fill(null))
     // TODO: in order to get the item map and unseen map working together, probably make empty/unseen into NULL for both. Currently it is null for item and 0 for bg
     this._unseenItemMap = [...Array(this.height)].map(columnItem => Array(this.width).fill(null))
     this._unseenBgMap = [...Array(this.height)].map(columnItem => Array(this.width).fill(this._TILE_TYPE.UNSEEN))
     // TODO: this is not ideal
-    this.isTreasurePlaced = false
-    this.isTrapsPlaced = false
+    this._isTreasurePlaced = false
+    this._isTrapsPlaced = false
     this.generateMap()
   }
 
@@ -88,18 +83,18 @@ module.exports = class Map {
     // TODO: figure out where to generate the map and how to prevent it from happening multiple times
     // I don't like how this has turned out
     if (regenerate) {
-      this.isTreasurePlaced = false
-      this.isTrapsPlaced = false
+      this._isTreasurePlaced = false
+      this._isTrapsPlaced = false
     }
     // TODO: should we check that everything has been placed, and if not, run this again?
-    if (!this.isTreasurePlaced) {
+    if (!this._isTreasurePlaced) {
       // TODO: randomize the spawn distance
       // TODO: put the randomized spawn thing into the lib/random file?
-      this.isTreasurePlaced = this.spawnItemAtDistance(1, 1, 2, this._TILE_TYPE.TREASURE)
+      this._isTreasurePlaced = this.spawnItemAtDistance(1, 1, 2, this._TILE_TYPE.TREASURE)
     }
-    if (!this.isTrapsPlaced) {
+    if (!this._isTrapsPlaced) {
       // printOut.humanReadableMap(MAP)
-      this.isTrapsPlaced = this.spawnItemsOnRows(80, 2, this._TILE_TYPE.TRAP)
+      this._isTrapsPlaced = this.spawnItemsOnRows(80, 2, this._TILE_TYPE.TRAP)
     }
   }
 
