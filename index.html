@@ -13,9 +13,16 @@
     <!-- include these in the project -->
     <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <script src="js/simpleCookie.js"></script>
     <script>
+      let isSpriteMode = getCookie('spriteMode') === 'true'
+      // run this from the command line to turn on sprites
+      function setSpriteMode (spriteMode = 'true') {
+        setCookie('spriteMode', spriteMode, 1)
+        isSpriteMode = spriteMode === 'true'
+      }
+
       $(function () {
-        const isAtHome = false
 
         const socket = io()
 
@@ -170,7 +177,7 @@
           let isTurn = false
           playersPublicInfo.forEach((player, index) => {
             classes = []
-            isYou = index === playersPublicInfo.map(ppi => ppi.id).indexOf(playerId)
+            isYou = index === playersPublicInfo.map(ppi => ppi.socketId).indexOf(playerId)
             isTurn = index === turn
             if (isYou) {
               classes.push('you')
@@ -230,16 +237,11 @@
           return itemString
         }
 
-        // TODO: check a cookie for this value
-        // run this from the command line to turn on sprites
-        function home () {
-          isAtHome = true
-        }
 
         // TODO: probably want to break this out into another file at some point in time. This will get large
         function tileBgClass (tileCode) {
           // For developing where we don't want the sprites shown, tee hee
-          if (!isAtHome) {
+          if (!isSpriteMode) {
             if (tileCode === ' ') {
               return 'floor'
             } else if (tileCode === '0') {
