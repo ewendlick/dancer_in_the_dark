@@ -106,10 +106,8 @@
           let typeClass = allowedTypes.includes(message.type) ? message.type : 'general'
           $messageContainer.find('ul').append(`<li><span class="${typeClass}">${message.payload}</span></li>`)
 
-          const messageLimit = 2
-          // remove some messages if there are too many?
+          const messageLimit = 20
           if ($messageContainer.find('li').length > messageLimit) {
-            // TODO: cache the li result?
             $messageContainer.find('li').first().remove()
           }
           // TODO: animate a flash when a new message is added
@@ -119,9 +117,7 @@
           }, 100)
         }
 
-        // TODO: receives bgMap, itemMap, and fogOfWar
         socket.on('map', map => {
-          // TODO: clean up, create viewport, jQuery cache these
           $mapContainer.html(buildMap(map))
         })
 
@@ -247,7 +243,6 @@
           return itemString
         }
 
-
         // TODO: probably want to break this out into another file at some point in time. This will get large
         function tileBgClass (tileCode) {
           // For developing where we don't want the sprites shown, tee hee
@@ -269,8 +264,6 @@
             return 'basic_' + ('─│└┌┐┘├┤┬┴┼?.'.indexOf(tileCode) + 1)
           }
         }
-
-        // function tileItems (
       })
     </script>
     <style>
