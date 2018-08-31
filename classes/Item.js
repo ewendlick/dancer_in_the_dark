@@ -16,6 +16,8 @@ module.exports = class Item {
     // ??movement impediment (TODO: figure out how to implement this. Reduce additional moves?)
     //
     this._type = type
+    this._observable = observable
+    this._detectable = detectable
     this._id = id
     id += 1
   }
@@ -28,6 +30,7 @@ module.exports = class Item {
     return this._id
   }
 
+  // TODO: need to hook this up
   detect () {
     if (this.observable || this.seen || Math.floor(Math.random() * 100) < detectable) {
       this.seen = true

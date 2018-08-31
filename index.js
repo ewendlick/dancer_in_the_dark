@@ -16,6 +16,7 @@ const INPUT = require('./lib/input')
 const random = require('./lib/random')
 const DEFAULT_TIME_SECONDS = 10
 
+// TIMER THINGS
 let timerSeconds = 0
 const timerTick = () => {
   if (timerSeconds > 0) {
@@ -25,11 +26,11 @@ const timerTick = () => {
     resetTimer()
   }
 }
-
 function resetTimer(seconds = DEFAULT_TIME_SECONDS) {
   io.emit('movementTimer', seconds)
   timerSeconds = seconds
 }
+setInterval(timerTick, 1000)
 
 printOut.floorToWallPercentage(MAP.bgMap)
 
@@ -72,8 +73,7 @@ io.on('connection', (socket) => {
     io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
 
     // TODO: hook this up to give different players more movement time
-    io.emit('movementTimer', DEFAULT_TIME_SECONDS)
-    setInterval(timerTick, 1000)
+    // io.emit('movementTimer', DEFAULT_TIME_SECONDS)
 
     // TODO: set the moves for the right players
     PLAYERS.playersPublicInfo().forEach((player, index) => {
@@ -107,7 +107,8 @@ io.on('connection', (socket) => {
 
       // TODO: Do we want to keep this?
       // This sets the timer back to 10 seconds after each move
-      io.emit('movementTimer', DEFAULT_TIME_SECONDS)
+      // io.emit('movementTimer', DEFAULT_TIME_SECONDS)
+      resetTimer()
 
       // TODO: set the moves for the right players
       PLAYERS.playersPublicInfo().forEach((player, index) => {
@@ -213,9 +214,15 @@ function resolveTile (socketId) {
       emitMessage('Someone made it to the exit with the treasure!', 'failure', 'others', socketId)
       restartGame()
     }
+  } else if (MAP.isItemAt(player.x, player.y, MAP.TILE_TYPE.TRAP)) {
+    // TODO: Reduce moves? Apply damage? Stun the player?
+    emitMessage(random.trapStrike(), 'event', 'self', socketId)
+    emitMessage('Your turn ends!', 'failure', 'self', socketId)
+    emitMessage('Someone triggered a trap!', 'event', 'others', socketId)
+    PLAYERS.turnDone()
+    resetTimer()
   }
-  // else if teleporter
-  // else if trap
+  // TODO: else if teleporter
 }
 
 function restartGame () {
@@ -243,7 +250,7 @@ function handleSingleKey(socketId, keyCode) {
     }
 
     if (PLAYERS.playersMovesRemaining(socketId) <= 0) {
-      // no more moves remaining (check Players class.... this needs to be fixed when multiple moves can be performed at once
+      // no more moves remaining (check Players class.... this needs to be fixed when we implement multiple moves can be performed at once
       PLAYERS.turnDone()
       resetTimer()
     }
@@ -313,25 +320,47 @@ function handleComboKey(socketId, keyCodes) {
     }
 
     if (PLAYERS.playersMovesRemaining(socketId) <= 0) {
+      // TODO: put a function in THIS file to end the turn
       PLAYERS.turnDone()
+      resetTimer()
+    }
+  } else if (keyCodes[0] === INPUT.T) {
+    if (PLAYERS.performMove(socketId, 1)) {
+      // TODO: need to rewrite all of this, and decided when to deduct the move
+      placeTrap(socketId, keyCodes[1])
+    } else {
+      // insufficient moves
+    }
+
+    if (PLAYERS.playersMovesRemaining(socketId) <= 0) {
+      PLAYERS.turnDone()
+      resetTimer()
     }
   }
 }
 
+// TODO: put a "find in path" function into the MAP class
+// origin, direction, max distance (and speed?), (and the type of tile that causes it to stop??)
+// maybe MAP returns a list of points that can be checked
 function fireProjectile (socketId, keyCode) {
   // instantly move in a single direction
   // TODO: consider movement of tiles per turn
 
   const player = PLAYERS.thisPlayer(socketId)
 
+  if (player.inventory.arrows <= 0) {
+    emitMessage('You do not have any arrows!', 'event', 'self', socketId)
+    return false
+  }
+
   // TODO: refactor. Hitting the conditional on each loop isn't ideal. There has to be a better way
   let x = player.x
   let y = player.y
   let currentTileIs = null
+  // TODO: where should this be defined? It appears in several places
   const UNMOVEABLE = -1
-  // while(MAP.isInMap(x, y)) { // immediately looks past the isInMap bounds :/
-  // TODO: MAP.isInMapBounds that checks for x > 0 && x < MAP.width && y > 0 && y < MAP.height
-  while(x > 0 && x < MAP.width && y > 0 && y < MAP.height) {
+
+  while(MAP.isWithinMapBounds(x, y)) {
     if (keyCode === INPUT.LEFT) {
       x -= 1
     } else if (keyCode === INPUT.UP) {
@@ -342,6 +371,7 @@ function fireProjectile (socketId, keyCode) {
       y += 1
     }
 
+    PLAYERS.removeInventory(socketId, 'arrows', 1)
     // TODO: wall check is wrong
     // TODO: need a way to make MOVEABLE and UNMOVEABLE more accessible
     // TODO: not DRY
@@ -366,6 +396,40 @@ function fireProjectile (socketId, keyCode) {
       // TODO: Message to all other players?
       break
     }
+  }
+}
+
+function placeTrap (socketId, keyCode) {
+  const player = PLAYERS.thisPlayer(socketId)
+
+  if (player.inventory.traps <= 0) {
+    emitMessage('You do not have any traps!', 'event', 'self', socketId)
+    return false
+  }
+
+  let x = player.x
+  let y = player.y
+  const UNMOVEABLE = -1
+
+  if (keyCode === INPUT.LEFT) {
+    x -= 1
+  } else if (keyCode === INPUT.UP) {
+    y -= 1
+  } else if (keyCode === INPUT.RIGHT) {
+    x += 1
+  } else if (keyCode === INPUT.DOWN) {
+    y += 1
+  }
+
+  if (MAP.movementImpedimentMap[y][x] !== UNMOVEABLE) {
+    emitMessage('You place the trap.', 'event', 'self', socketId)
+    // TODO: rely on MAP to check if we can place it. Return true or false from in there
+    // TODO: flesh out spawnItemat, and maybe use MAP.addItemAt(x, y, itemType) here
+    MAP.spawnItemAt(x, y, MAP.TILE_TYPE.TRAP)
+    PLAYERS.removeInventory(socketId, 'traps', 1)
+    return true
+  } else {
+    return false
   }
 }
 

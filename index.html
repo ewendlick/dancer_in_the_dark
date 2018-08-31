@@ -32,12 +32,13 @@
           DOWN: 40,
           SPACEBAR: 32,
           F: 70, // (F)ire
+          T: 84, // place (T)rap
           C: 67 // (C)ancel
         }
 
         const SINGLE_KEYCODES = [KEY.LEFT, KEY.UP, KEY.RIGHT, KEY.DOWN, KEY.SPACEBAR, KEY.C]
         // Require two keys to be pressed
-        const COMBO_KEYCODES = [KEY.F]
+        const COMBO_KEYCODES = [KEY.F, KEY.T]
 
         const ALLOWED_KEYCODES = SINGLE_KEYCODES.concat(COMBO_KEYCODES)
 
@@ -151,6 +152,7 @@
         })
 
         socket.on('movementTimer', movementTimerSecondsRemaining => {
+          console.log(Math.random() + ')movementTimer: ' + movementTimerSecondsRemaining)
           // Set the movement timer, and show whose turn it is for
           $movementTimeRemaining.html(movementTimerSecondsRemaining)
         })
