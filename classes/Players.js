@@ -17,12 +17,13 @@ module.exports = class Players {
       y: 1,
       movesRemaining: 0,
       inventory: {
-        arrows: 2, // (umimplemented)
-        treasure: 0
+        arrows: 2,
+        treasure: 0,
+        traps: 1
       },
       status: {
         movement: 3,
-        viewDistance: 3, // unimplemented
+        viewDistance: 3,
         stunned: 0 // turns until not stunned (unimplemented)
       }
     }
@@ -242,6 +243,18 @@ module.exports = class Players {
       return player
     })
   }
+
+  // TODO: more generic function for adding and removing anything??
+  removeInventory (socketId, key, value) {
+    this.players = this.players.map(player => {
+      if (player.socketId === socketId) {
+        player.inventory[key] -= value
+      }
+      // TODO: is there a better way to do this?
+      return player
+    })
+  }
+
 
   // TODO: this is silly. We already have the thisPlayer function
   // TODO: delete this

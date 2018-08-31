@@ -143,6 +143,7 @@ module.exports = class Map {
 
   // TODO: move onlyFloorPlacement to addItemAt????
   spawnItemAt (x, y, itemType = this._TILE_TYPE.TREASURE, onlyFloorPlacement = true) {
+    // TODO: better logic for only floor placement
     if (onlyFloorPlacement && this._bgMap[y][x] !== this._TILE_TYPE.FLOOR && !this.isInMap(x, y)) {
       return false
     }
@@ -185,7 +186,13 @@ module.exports = class Map {
   }
 
   isInMap (x, y) {
+    // includes border walls
     return x >= 0 && x < this._width && y >= 0 && y < this._height
+  }
+
+  isWithinMapBounds (x, y) {
+    // does not include border walls
+    return x > 0 && x < this._width && y > 0 && y < this._height
   }
 
   spawnItemsOnRows (targetPercentageY, targetNumberX, itemType = this._TILE_TYPE.TRAP) {
