@@ -93,7 +93,7 @@ module.exports = class Players {
   }
 
   playersMovesRemaining (socketId) {
-    console.log(socketId + ' playersMovesRemaining: ' + this.thisPlayer(socketId).movesRemaining)
+    // console.log(socketId + ' playersMovesRemaining: ' + this.thisPlayer(socketId).movesRemaining)
     return this.thisPlayer(socketId).movesRemaining
   }
 

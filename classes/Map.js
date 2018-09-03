@@ -99,11 +99,24 @@ module.exports = class Map {
   }
 
   // TODO: once we have bg, item, and movement set up, should they all be wrapped into one function?
-  addItemAt (x, y, itemType = this._TILE_TYPE.FLOOR) {
+  addItemAt (x, y, itemType = this._TILE_TYPE.TRAP) {
     if (this._itemMap[y][x] === null) {
       this._itemMap[y][x] = []
     }
     this._itemMap[y][x].push(new item(itemType))
+  }
+
+  // TODO: a system to remove 1, more than 1, or all
+  removeItemAt (x, y, itemType = this._TILE_TYPE.TRAP) {
+    // removes one instance at that location and assume that it exists
+    const foundIndex = this._itemMap[y][x].findIndex(x => {
+      return x.type === itemType
+    })
+    this._itemMap[y][x] = this._itemMap[y][x].splice(1, foundIndex)
+
+    if (this._itemMap[y][x] === []) {
+      this._itemMap[y][x] = null
+    }
   }
 
   // TODO: is this pointless?

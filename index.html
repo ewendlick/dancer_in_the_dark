@@ -129,17 +129,8 @@
 
         let previousVisiblePlayers = []
         socket.on('players', players => {
-          // x, y, id list
-          // compare against previous
-          // update with animation
-          // redraw at new position
-          // erase all old ones
-
           // Moves are done by taking previous positions and seeing which ones have changed
           // All movement is handled by receiving this from the remote server.
-
-          // If the player is drawn, attempt to animate them to the next location (only animate adjacent)
-          // If the player is not drawn, create them at a location
 
           // Roundabout way. Get coordinates, and convert to tile coordinates
           // ALSO, probably can put this into the loop below
@@ -160,6 +151,11 @@
             $mapContainer.find('player').remove()
           }
 
+          // TODO: Why are duplicates appearing?
+          players.forEach((player, playerId) => {
+            $mapContainer.find(playerClass(playerId)).slice(1).remove()
+          })
+
           // TODO: need to shitcan the playerId system. What happens in a round where multiple people enter and leave?
           players.forEach((player, playerId) => {
             let playerDirection = null
@@ -167,25 +163,29 @@
             if (prev) {
               putPlayerAt(playerId, prev.x, prev.y)
               playerDirection = getPlayerDirection(prev.x, prev.y, player.x, player.y)
-              // console.log(playerId + ': ' + playerDirection)
             } else {
               playerDirection = 'appear'
             }
 
+            if (prev) {
+              playerDeleteFrom(playerId, prev.x, prev.y)
+            }
+
             if (playerDirection === 'appear' || playerDirection === 'warp') {
               // draw player at a position, delete previous location
-              if (prev) {
-                playerDeleteFrom(playerId, prev.x, prev.y)
-              }
               putPlayerAt(playerId, player.x, player.y)
             } else {
-              let $player = $('.' + playerClass(playerId))
+              let $player = $(playerClass(playerId))
               // animate player to a position
               movePlayerTo($player, playerDirection)
               // TODO: Timing results in these not being deleted at the right time
               playerDeleteFrom(playerId, prev.x, prev.y)
+              playerDeleteFrom(playerId, player.x, player.y)
+              putPlayerAt(playerId, player.x, player.y)
+
               // TODO: DELETE THE PREVIOUS POSITION
               // redraw at current one
+              // Use a callback in the animation system
             }
           })
           // Done, save the current player information for comparison later
@@ -215,19 +215,9 @@
           $mapContainer.find(`.row:eq(${oldY})`).find(`.tile:eq(${oldX})`).find('.player ' + playerClass(playerId)).remove()
         }
 
-        function playerClass (playerId) {
-          if (playerId === 0) {
-            return 'player1'
-          } else if (playerId === 1) {
-            return 'player2'
-          }
+        function playerClass (playerId, useDot = true) {
+          return `${useDot ? '.' : ''}player${playerId + 1}`
         }
-
-        // TODO: should this be here, or in index.js?
-        // function playerPositionList () {
-        //   // TODO: this will need to find offsets, because players will no longer be nested and drawn inside of the map
-        //   // $mapContainer.find(
-        // }
 
         // TODO: playerId => playerTeamId ?????
         function putPlayerAt (playerId, x, y) {
@@ -235,7 +225,7 @@
           // TODO: less hacky garbage
           // const playerClass = `human_${playerId + 1}`
 
-          $mapContainer.find(`.row:eq(${y})`).find(`.tile:eq(${x})`).append(`<div class="player ${playerClass(playerId)}"></div>`)
+          $mapContainer.find(`.row:eq(${y})`).find(`.tile:eq(${x})`).append(`<div class="player ${playerClass(playerId, false)}"></div>`)
         }
 
         // TODO: find the item that needs to be moved
