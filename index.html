@@ -141,8 +141,6 @@
           // If the player is drawn, attempt to animate them to the next location (only animate adjacent)
           // If the player is not drawn, create them at a location
 
-          // $mapContainer.find(`.row:eq(${y})`).find(`.tile:eq(${x})`).append(`<div class="player ${playerClass(playerId)}"></div>`)
-
           // Roundabout way. Get coordinates, and convert to tile coordinates
           // ALSO, probably can put this into the loop below
           // previousVisiblePlayers = players.map((player, playerId) => {
@@ -153,47 +151,57 @@
           //     return undefined
           //   }
           // })
+          if (previousVisiblePlayers === []) {
+            players.forEach((player, playerId) => {
+              putPlayerAt(playerId, player.x, player.y)
+            })
+
+            // TODO: is this required for refreshing the game?
+            $mapContainer.find('player').remove()
+          }
 
           // TODO: need to shitcan the playerId system. What happens in a round where multiple people enter and leave?
           players.forEach((player, playerId) => {
             let playerDirection = null
             let prev = previousVisiblePlayers[playerId]
             if (prev) {
+              putPlayerAt(playerId, prev.x, prev.y)
               playerDirection = getPlayerDirection(prev.x, prev.y, player.x, player.y)
+              console.log(playerId + ': ' + playerDirection)
             } else {
               playerDirection = 'appear'
             }
 
-            if (playerDirection === 'appear' && playerDirection === 'warp') {
-              // draw player at a position
-              // TODO: rename
+            if (playerDirection === 'appear' || playerDirection === 'warp') {
+              // draw player at a position, delete previous location
+              if (prev) {
+                playerDeleteFrom(playerId, prev.x, prev.y)
+              }
               putPlayerAt(playerId, player.x, player.y)
             } else {
               let $player = $('.' + playerClass(playerId))
               // animate player to a position
-              // TODO: rename
               movePlayerTo($player, playerDirection)
             }
 
             // Find at a location, and delete from that location (redraw)
-            if (prev) {
-              putPlayerAt(playerId, player.x, player.y)
-              playerDeleteFrom(playerId, prev.x, prev.y)
-            }
-
-            // Done, save the current player information for comparison later
-            previousVisiblePlayers = players
+            //if (prev) {
+            //   putPlayerAt(playerId, player.x, player.y)
+            //   playerDeleteFrom(playerId, prev.x, prev.y)
+            // }
           })
+          // Done, save the current player information for comparison later
+          previousVisiblePlayers = players
         })
 
         function getPlayerDirection (oldX, oldY, newX, newY) {
-          if ((oldX === newX) && (oldY === newY - 1)) {
+          if ((oldX === newX) && (oldY - 1 === newY)) {
             return 'up'
-          } else if ((oldX - 1 === newX) && (oldY === newY - 1)) {
-            return 'right'
-          } else if ((oldX === newX) && (oldY - 1 === newY)) {
-            return 'down'
           } else if ((oldX === newX - 1) && (oldY === newY)) {
+            return 'right'
+          } else if ((oldX === newX) && (oldY === newY - 1)) {
+            return 'down'
+          } else if ((oldX - 1 === newX) && (oldY === newY)) {
             return 'left'
           } else if ((oldX === newX) && (oldY === newY)) {
             return 'stay' // Did not move
@@ -234,7 +242,8 @@
 
         // TODO: find the item that needs to be moved
         // TODO: switch to TweenLite
-        function movePlayerTo ($player = null, direction, amount = 32) {
+        function movePlayerTo ($player = null, direction, amount = TILE_SIZE) {
+          // console.log('movePlayerTo hit with direction: ' + direction)
           // Tweenlite.to($player, 0.1, {left: -32});
           switch(direction) {
             case 'up':
@@ -273,7 +282,7 @@
         })
 
         socket.on('movementTimer', movementTimerSecondsRemaining => {
-          console.log(Math.random() + ')movementTimer: ' + movementTimerSecondsRemaining)
+          // console.log(Math.random() + ')movementTimer: ' + movementTimerSecondsRemaining)
           // Set the movement timer, and show whose turn it is for
           $movementTimeRemaining.html(movementTimerSecondsRemaining)
         })
