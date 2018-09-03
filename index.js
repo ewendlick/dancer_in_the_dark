@@ -66,7 +66,7 @@ io.on('connection', (socket) => {
     io.to(`${socket.id}`).emit('map', seen(socket.id))
 
     PLAYERS.playersPublicInfo().forEach(player => {
-      io.to(`${socket.id}`).emit('players', visiblePlayersFor(socket.id))
+      io.to(`${player.socketId}`).emit('players', visiblePlayersFor(player.socketId))
     })
 
     // TODO: figure out how to display that there are not enough players. Make it another emit??
@@ -100,7 +100,7 @@ io.on('connection', (socket) => {
       io.to(`${socket.id}`).emit('map', seen(socket.id))
 
       PLAYERS.playersPublicInfo().forEach(player => {
-        io.to(`${player.socketId}`).emit('players', visiblePlayersFor(socket.id))
+        io.to(`${player.socketId}`).emit('players', visiblePlayersFor(player.socketId))
       })
 
       io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
@@ -218,8 +218,12 @@ function resolveTile (socketId) {
     // TODO: Reduce moves? Apply damage? Stun the player?
     emitMessage(random.trapStrike(), 'event', 'self', socketId)
     emitMessage('Your turn ends!', 'failure', 'self', socketId)
+    MAP.removeItemAt(player.x, player.y, MAP.TILE_TYPE.TRAP)
     emitMessage('Someone triggered a trap!', 'event', 'others', socketId)
-    PLAYERS.turnDone()
+    // Do not trigger turnDone if it is already triggered by movement
+    if (!PLAYERS.playersMovesRemaining(socketId) <= 0) {
+      PLAYERS.turnDone()
+    }
     resetTimer()
   }
   // TODO: else if teleporter
