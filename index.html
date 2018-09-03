@@ -13,6 +13,7 @@
     <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script src="js/simpleCookie.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/2.0.2/TweenMax.min.js"></script>
     <script>
       let isSpriteMode = getCookie('spriteMode') === 'true'
       // run this from the command line to turn on sprites
@@ -22,6 +23,8 @@
       }
 
       $(function () {
+        // TODO: move this into MAP or the lib
+        const TILE_SIZE = 32
 
         const socket = io()
 
@@ -48,6 +51,7 @@
         const $mapContainer = $('#map-container')
         const $movesRemaining = $('#moves-remaining')
         const $movementTimeRemaining = $('#movement-time-remaining')
+
 
         function isAllowedKey (keyCode) {
           return ALLOWED_KEYCODES.includes(keyCode)
@@ -121,15 +125,132 @@
           $mapContainer.html(buildMap(map))
         })
 
-        socket.on('players', players => {
-          // TODO: Need a better way of handling how players are drawn
-          // We are currently updating player position despite them needing to be invisible
-          $mapContainer.find('.player').remove()
 
+
+        let previousVisiblePlayers = []
+        socket.on('players', players => {
+          // x, y, id list
+          // compare against previous
+          // update with animation
+          // redraw at new position
+          // erase all old ones
+
+          // Moves are done by taking previous positions and seeing which ones have changed
+          // All movement is handled by receiving this from the remote server.
+
+          // If the player is drawn, attempt to animate them to the next location (only animate adjacent)
+          // If the player is not drawn, create them at a location
+
+          // $mapContainer.find(`.row:eq(${y})`).find(`.tile:eq(${x})`).append(`<div class="player ${playerClass(playerId)}"></div>`)
+
+          // Roundabout way. Get coordinates, and convert to tile coordinates
+          // ALSO, probably can put this into the loop below
+          // previousVisiblePlayers = players.map((player, playerId) => {
+          //   let mapPositionRaw = $mapContainer.find('.' + playerClass(playerId)).position()
+          //   if (mapPositionRaw) {
+          //     return { x: mapPositionRaw.left / TILE_SIZE, y: mapPositionRaw.top / TILE_SIZE }
+          //   } else {
+          //     return undefined
+          //   }
+          // })
+
+          // TODO: need to shitcan the playerId system. What happens in a round where multiple people enter and leave?
           players.forEach((player, playerId) => {
-            drawPlayer(playerId, player.x, player.y)
+            let playerDirection = null
+            let prev = previousVisiblePlayers[playerId]
+            if (prev) {
+              playerDirection = getPlayerDirection(prev.x, prev.y, player.x, player.y)
+            } else {
+              playerDirection = 'appear'
+            }
+
+            if (playerDirection === 'appear' && playerDirection === 'warp') {
+              // draw player at a position
+              // TODO: rename
+              putPlayerAt(playerId, player.x, player.y)
+            } else {
+              let $player = $('.' + playerClass(playerId))
+              // animate player to a position
+              // TODO: rename
+              movePlayerTo($player, playerDirection)
+            }
+
+            // Find at a location, and delete from that location (redraw)
+            if (prev) {
+              putPlayerAt(playerId, player.x, player.y)
+              playerDeleteFrom(playerId, prev.x, prev.y)
+            }
+
+            // Done, save the current player information for comparison later
+            previousVisiblePlayers = players
           })
         })
+
+        function getPlayerDirection (oldX, oldY, newX, newY) {
+          if ((oldX === newX) && (oldY === newY - 1)) {
+            return 'up'
+          } else if ((oldX - 1 === newX) && (oldY === newY - 1)) {
+            return 'right'
+          } else if ((oldX === newX) && (oldY - 1 === newY)) {
+            return 'down'
+          } else if ((oldX === newX - 1) && (oldY === newY)) {
+            return 'left'
+          } else if ((oldX === newX) && (oldY === newY)) {
+            return 'stay' // Did not move
+          } else if (oldX !== undefined && oldY !== undefined) {
+            return 'warp' // Non-adjacent movement
+          }
+          // else { // unused
+          //   return 'appear' // First draw
+          // }
+        }
+
+        function playerDeleteFrom (playerId, oldX, oldY) {
+          $mapContainer.find(`.row:eq(${oldY})`).find(`.tile:eq(${oldX})`).find('.player ' + playerClass(playerId)).remove()
+        }
+
+        function playerClass (playerId) {
+          if (playerId === 0) {
+            return 'player1'
+          } else if (playerId === 1) {
+            return 'player2'
+          }
+        }
+
+        // TODO: should this be here, or in index.js?
+        // function playerPositionList () {
+        //   // TODO: this will need to find offsets, because players will no longer be nested and drawn inside of the map
+        //   // $mapContainer.find(
+        // }
+
+        // TODO: playerId => playerTeamId ?????
+        function putPlayerAt (playerId, x, y) {
+          // TODO: classes, IDs, etc
+          // TODO: less hacky garbage
+          // const playerClass = `human_${playerId + 1}`
+
+          $mapContainer.find(`.row:eq(${y})`).find(`.tile:eq(${x})`).append(`<div class="player ${playerClass(playerId)}"></div>`)
+        }
+
+        // TODO: find the item that needs to be moved
+        // TODO: switch to TweenLite
+        function movePlayerTo ($player = null, direction, amount = 32) {
+          // Tweenlite.to($player, 0.1, {left: -32});
+          switch(direction) {
+            case 'up':
+              TweenMax.to($player, 0.1, {y: `-=${amount}`});
+              break
+            case 'right':
+              TweenMax.to($player, 0.1, {x: `+=${amount}`});
+              break
+            case 'down':
+              TweenMax.to($player, 0.1, {y: `+=${amount}`});
+              break
+            case 'left':
+              TweenMax.to($player, 0.1, {x: `-=${amount}`});
+              break
+          }
+        }
 
         // TODO: make this into a class, and give it an update method
         let playerId = null
@@ -195,19 +316,6 @@
           })
           // TODO: better styles for this
           $playerListContainer.find('ul').html(builtList)
-        }
-
-        function drawPlayer (playerId, x, y) {
-          // TODO: classes, IDs, etc
-          // TODO: less hacky garbage
-          // const playerClass = `human_${playerId + 1}`
-          if (playerId === 0) {
-            playerClass = 'player1'
-          } else if (playerId === 1) {
-            playerClass = 'player2'
-          }
-
-          $mapContainer.find(`.row:eq(${y})`).find(`.tile:eq(${x})`).append(`<div class="player ${playerClass}"></div>`)
         }
 
         function buildMap (map) {
@@ -402,6 +510,24 @@
       font-size: 16px;
       box-shadow: inset 0 1px 2px rgba(27,31,35,0.075);
     }
+
+    /* Still considering all of this. Moves may need to be limited to one player per map update */
+    /*
+    .move-right {
+      -webkit-animation: player-move-right 0.1s forwards;
+      -webkit-animation-delay: 0.0s;
+      animation: player-move-right 0.1s forwards;
+      animation-delay: 0.0s;
+    }
+
+    @-webkit-keyframes player-move-right {
+      100% { left: 32px; }
+    }
+
+    @keyframes player-move-right {
+      100% { left: 32px; }
+    }
+    */
     </style>
     <div id="page">
       <header>

@@ -1,10 +1,11 @@
 {
   "name": "dancer-in-the-dark",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Dancer in the Dark",
   "dependencies": {
     "chalk": "^2.4.1",
     "express": "^4.15.2",
+    "gsap": "^2.0.2",
     "socket.io": "^1.7.3"
   },
   "scripts": {

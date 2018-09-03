@@ -219,7 +219,10 @@ function resolveTile (socketId) {
     emitMessage(random.trapStrike(), 'event', 'self', socketId)
     emitMessage('Your turn ends!', 'failure', 'self', socketId)
     emitMessage('Someone triggered a trap!', 'event', 'others', socketId)
-    PLAYERS.turnDone()
+    // Do not trigger turnDone if it is already triggered by movement
+    if (!PLAYERS.playersMovesRemaining(socketId) <= 0) {
+      PLAYERS.turnDone()
+    }
     resetTimer()
   }
   // TODO: else if teleporter
