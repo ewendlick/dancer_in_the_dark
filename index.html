@@ -167,7 +167,7 @@
             if (prev) {
               putPlayerAt(playerId, prev.x, prev.y)
               playerDirection = getPlayerDirection(prev.x, prev.y, player.x, player.y)
-              console.log(playerId + ': ' + playerDirection)
+              // console.log(playerId + ': ' + playerDirection)
             } else {
               playerDirection = 'appear'
             }
@@ -182,13 +182,11 @@
               let $player = $('.' + playerClass(playerId))
               // animate player to a position
               movePlayerTo($player, playerDirection)
+              // TODO: Timing results in these not being deleted at the right time
+              playerDeleteFrom(playerId, prev.x, prev.y)
+              // TODO: DELETE THE PREVIOUS POSITION
+              // redraw at current one
             }
-
-            // Find at a location, and delete from that location (redraw)
-            //if (prev) {
-            //   putPlayerAt(playerId, player.x, player.y)
-            //   playerDeleteFrom(playerId, prev.x, prev.y)
-            // }
           })
           // Done, save the current player information for comparison later
           previousVisiblePlayers = players

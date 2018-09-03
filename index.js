@@ -66,7 +66,7 @@ io.on('connection', (socket) => {
     io.to(`${socket.id}`).emit('map', seen(socket.id))
 
     PLAYERS.playersPublicInfo().forEach(player => {
-      io.to(`${socket.id}`).emit('players', visiblePlayersFor(socket.id))
+      io.to(`${player.socketId}`).emit('players', visiblePlayersFor(player.socketId))
     })
 
     // TODO: figure out how to display that there are not enough players. Make it another emit??
@@ -100,7 +100,7 @@ io.on('connection', (socket) => {
       io.to(`${socket.id}`).emit('map', seen(socket.id))
 
       PLAYERS.playersPublicInfo().forEach(player => {
-        io.to(`${player.socketId}`).emit('players', visiblePlayersFor(socket.id))
+        io.to(`${player.socketId}`).emit('players', visiblePlayersFor(player.socketId))
       })
 
       io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))

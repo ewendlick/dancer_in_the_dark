@@ -148,12 +148,6 @@ module.exports = class Players {
     })
   }
 
-  // playerLocations () {
-  //   return this.players.map(player => {
-  //     return { x: player.x, y: player.y }
-  //   })
-  // }
-
   playersAt (x, y) {
     return this.players.filter(player => {
       // console.log('player: ' + player.x + ' ' + player.y + ' passed: ' + x + ' ' + y)
