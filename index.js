@@ -26,6 +26,7 @@ const timerTick = () => {
     resetTimer()
   }
 }
+
 function resetTimer(seconds = DEFAULT_TIME_SECONDS) {
   io.emit('movementTimer', seconds)
   timerSeconds = seconds
@@ -336,6 +337,13 @@ function handleComboKey(socketId, keyCodes) {
       PLAYERS.turnDone()
       resetTimer()
     }
+  } else if (keyCodes[0] === INPUT.A) {
+    if (PLAYERS.performMove(socketId, 1)) {
+      // TODO: need to rewrite all of this, and decided when to deduct the move
+      stabSword(socketId, keyCodes[1])
+    } else {
+      // insufficient moves
+    }
   }
 }
 
@@ -430,6 +438,68 @@ function placeTrap (socketId, keyCode) {
     return true
   } else {
     return false
+  }
+}
+
+function stabSword (socketId, keyCode) {
+  const player = PLAYERS.thisPlayer(socketId)
+
+  // if (player.inventory.arrows <= 0) {
+  //   emitMessage('You do not have any arrows!', 'event', 'self', socketId)
+  //   return false
+  // }
+
+  let x = player.x
+  let y = player.y
+  const UNMOVEABLE = -1
+
+  if (keyCode === INPUT.LEFT) {
+    x -= 1
+  } else if (keyCode === INPUT.UP) {
+    y -= 1
+  } else if (keyCode === INPUT.RIGHT) {
+    x += 1
+  } else if (keyCode === INPUT.DOWN) {
+    y += 1
+  }
+
+  if (MAP.movementImpedimentMap[y][x] === UNMOVEABLE) {
+    // message to the person who fired it
+    // TODO: Different messages depending on visibility?
+    // TODO: checking against moveability. this message may not be appropriate
+    emitMessage('You strike at a wall', 'event', 'self', socketId)
+    emitMessage('You hear a loud sound as some dingdong hits a wall with a sword', 'event', 'all')
+    break
+  } else if (MAP.isItemAt(x, y, MAP.TILE_TYPE.TREASURE)) {
+    emitMessage('You strike at the treasure', 'event', 'self', socketId)
+    emitMessage('You hear a loud sound as some dingdong hits the treasure with a sword', 'event', 'others', socketId)
+    break
+  }
+
+  if (tileHas(x, y) === 'player') {
+    const struckPlayer = strikePlayerAt(x, y)
+    // TODO: Message to the person struck...
+    emitMessage(random.stabSword(struckPlayer.name), 'event', 'self', socketId)
+    break
+  }
+
+  io.to(`${player.socketId}`).emit('movesRemaining', PLAYERS.playersMovesRemaining(player.socketId))
+
+  // TODO: animation only for those that are visible
+}
+
+// TODO: think about this. Why pass so many arguments just to build an object?
+function emitAnimation (socketId, direction, animationClass, animationLength = 1000) {
+  const animation = {
+    socketId: socketId,
+    direction: direction,
+    animationClass: animationClass,
+    animationLength: animationLength
+  }
+  if (socketId) {
+    io.to(`${socketId}`).emit('playerAnimation', animation)
+  } else {
+
   }
 }
 

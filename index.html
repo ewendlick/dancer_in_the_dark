@@ -7,12 +7,12 @@
     <link rel="stylesheet" type="text/css" href="css/constructions.css" />
     <link rel="stylesheet" type="text/css" href="css/decorations.css" />
     <link rel="stylesheet" type="text/css" href="css/humans.css" />
-    <style></style>
   </head>
   <body>
     <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script src="js/simpleCookie.js"></script>
+    <script src="shared/index.js"></script>
     <script>
       let isSpriteMode = getCookie('spriteMode') === 'true'
       // run this from the command line to turn on sprites
@@ -32,13 +32,14 @@
           DOWN: 40,
           SPACEBAR: 32,
           F: 70, // (F)ire
+          A: 65, // (A)ttack with a sword
           T: 84, // place (T)rap
           C: 67 // (C)ancel
         }
 
         const SINGLE_KEYCODES = [KEY.LEFT, KEY.UP, KEY.RIGHT, KEY.DOWN, KEY.SPACEBAR, KEY.C]
         // Require two keys to be pressed
-        const COMBO_KEYCODES = [KEY.F, KEY.T]
+        const COMBO_KEYCODES = [KEY.A, KEY.F, KEY.T]
 
         const ALLOWED_KEYCODES = SINGLE_KEYCODES.concat(COMBO_KEYCODES)
 
@@ -77,6 +78,8 @@
               previousKey = keyCode
               if (keyCode === KEY.F) {
                 addMessage({payload: 'You notch an arrow. Which direction do you shoot?', type: 'event'})
+              } (keyCode === KEY.A) {
+                addMessage({payload: 'You ready your sword. Which direction do you stab?', type: 'event'})
               }
             } else if (previousKey !== null && isSingleKey(keyCode)) { // finish action
               emitComboKey([previousKey, keyCode])
@@ -171,6 +174,18 @@
           updatePlayerNames()
         })
 
+        socket.on('playerAnimation', passedPlayerAnimationInfo => {
+          // Get the playerId, class on the page, direction, action, and timing
+          // Find the player on the screen
+          console.log(passedPlayerAnimationInfo.playerIndex)
+          $player = $()
+
+          player.addClass(passedPlayerAnimationInfo.animationClass)
+          setTimeout( () => {
+            player.removeClass(passedPlayerAnimationInfo.animationClass)
+          }, passedPlayerAnimationInfo.animationLength)
+        })
+
         function updatePlayerNames () {
           if (playersPublicInfo === [] || turn === null || playerId === null) {
             return
@@ -197,6 +212,7 @@
           $playerListContainer.find('ul').html(builtList)
         }
 
+        // TODO: what is this? Not DRY?
         function drawPlayer (playerId, x, y) {
           // TODO: classes, IDs, etc
           // TODO: less hacky garbage
@@ -401,6 +417,23 @@
       background-color: #fafbfc;
       font-size: 16px;
       box-shadow: inset 0 1px 2px rgba(27,31,35,0.075);
+    }
+
+    .sword-stab-right {
+      position: relative;
+      height: 10px;
+      width: 10px;
+      background-color: #e5e;
+      animation: stab-right 1 infinite; /* need setTimeout of 1000 */
+    }
+
+    @keyframes stab-right {
+      0%, 100% {
+        left: 0;
+      }
+      10% {
+        left: 20px;
+      }
     }
     </style>
     <div id="page">
