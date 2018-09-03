@@ -93,7 +93,7 @@ module.exports = class Players {
   }
 
   playersMovesRemaining (socketId) {
-    console.log(socketId + ' playersMovesRemaining: ' + this.thisPlayer(socketId).movesRemaining)
+    // console.log(socketId + ' playersMovesRemaining: ' + this.thisPlayer(socketId).movesRemaining)
     return this.thisPlayer(socketId).movesRemaining
   }
 
@@ -147,12 +147,6 @@ module.exports = class Players {
       return visibleMap[player.y][player.x] !== 0
     })
   }
-
-  // playerLocations () {
-  //   return this.players.map(player => {
-  //     return { x: player.x, y: player.y }
-  //   })
-  // }
 
   playersAt (x, y) {
     return this.players.filter(player => {
@@ -222,15 +216,21 @@ module.exports = class Players {
   }
 
   turnDone () {
+    // Set the current player's turns to 0
+    const currentTurnIndex = this.thisPlayersTurn()
+    if (this.players[currentTurnIndex] === undefined) {
+      return // This was called before we had enough players
+    }
+    this.players[currentTurnIndex].movesRemaining = 0
     this.turnCounter++
     // assign moves to the next player
     // I don't know if this should be broken into its own function or not, but one this is clear:
     // This all needs to have the entire process mapped out and thoroughly considered
-    const turnIndex = this.thisPlayersTurn()
-    if (this.players[turnIndex] === undefined) {
+    const nextTurnIndex = this.thisPlayersTurn()
+    if (this.players[nextTurnIndex] === undefined) {
       return // The timer caused this to be called before we had enough players
     }
-    this.players[turnIndex].movesRemaining = this.players[turnIndex].status.movement
+    this.players[nextTurnIndex].movesRemaining = this.players[nextTurnIndex].status.movement
   }
 
   // TODO: more generic function for adding and removing anything??

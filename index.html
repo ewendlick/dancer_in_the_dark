@@ -12,7 +12,7 @@
     <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script src="js/simpleCookie.js"></script>
-    <script src="shared/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/2.0.2/TweenMax.min.js"></script>
     <script>
       let isSpriteMode = getCookie('spriteMode') === 'true'
       // run this from the command line to turn on sprites
@@ -22,6 +22,8 @@
       }
 
       $(function () {
+        // TODO: move this into MAP or the lib
+        const TILE_SIZE = 32
 
         const socket = io()
 
@@ -49,6 +51,7 @@
         const $mapContainer = $('#map-container')
         const $movesRemaining = $('#moves-remaining')
         const $movementTimeRemaining = $('#movement-time-remaining')
+
 
         function isAllowedKey (keyCode) {
           return ALLOWED_KEYCODES.includes(keyCode)
@@ -78,7 +81,7 @@
               previousKey = keyCode
               if (keyCode === KEY.F) {
                 addMessage({payload: 'You notch an arrow. Which direction do you shoot?', type: 'event'})
-              } (keyCode === KEY.A) {
+              } else if (keyCode === KEY.A) {
                 addMessage({payload: 'You ready your sword. Which direction do you stab?', type: 'event'})
               }
             } else if (previousKey !== null && isSingleKey(keyCode)) { // finish action
@@ -124,15 +127,129 @@
           $mapContainer.html(buildMap(map))
         })
 
-        socket.on('players', players => {
-          // TODO: Need a better way of handling how players are drawn
-          // We are currently updating player position despite them needing to be invisible
-          $mapContainer.find('.player').remove()
 
+
+        let previousVisiblePlayers = []
+        socket.on('players', players => {
+          // Moves are done by taking previous positions and seeing which ones have changed
+          // All movement is handled by receiving this from the remote server.
+
+          // Roundabout way. Get coordinates, and convert to tile coordinates
+          // ALSO, probably can put this into the loop below
+          // previousVisiblePlayers = players.map((player, playerId) => {
+          //   let mapPositionRaw = $mapContainer.find('.' + playerClass(playerId)).position()
+          //   if (mapPositionRaw) {
+          //     return { x: mapPositionRaw.left / TILE_SIZE, y: mapPositionRaw.top / TILE_SIZE }
+          //   } else {
+          //     return undefined
+          //   }
+          // })
+          if (previousVisiblePlayers === []) {
+            players.forEach((player, playerId) => {
+              putPlayerAt(playerId, player.x, player.y)
+            })
+
+            // TODO: is this required for refreshing the game?
+            $mapContainer.find('player').remove()
+          }
+
+          // TODO: Why are duplicates appearing?
           players.forEach((player, playerId) => {
-            drawPlayer(playerId, player.x, player.y)
+            $mapContainer.find(playerClass(playerId)).slice(1).remove()
           })
+
+          // TODO: need to shitcan the playerId system. What happens in a round where multiple people enter and leave?
+          players.forEach((player, playerId) => {
+            let playerDirection = null
+            let prev = previousVisiblePlayers[playerId]
+            if (prev) {
+              putPlayerAt(playerId, prev.x, prev.y)
+              playerDirection = getPlayerDirection(prev.x, prev.y, player.x, player.y)
+            } else {
+              playerDirection = 'appear'
+            }
+
+            if (prev) {
+              playerDeleteFrom(playerId, prev.x, prev.y)
+            }
+
+            if (playerDirection === 'appear' || playerDirection === 'warp') {
+              // draw player at a position, delete previous location
+              putPlayerAt(playerId, player.x, player.y)
+            } else {
+              let $player = $(playerClass(playerId))
+              // animate player to a position
+              movePlayerTo($player, playerDirection)
+              // TODO: Timing results in these not being deleted at the right time
+              playerDeleteFrom(playerId, prev.x, prev.y)
+              playerDeleteFrom(playerId, player.x, player.y)
+              putPlayerAt(playerId, player.x, player.y)
+
+              // TODO: DELETE THE PREVIOUS POSITION
+              // redraw at current one
+              // Use a callback in the animation system
+            }
+          })
+          // Done, save the current player information for comparison later
+          previousVisiblePlayers = players
         })
+
+        function getPlayerDirection (oldX, oldY, newX, newY) {
+          if ((oldX === newX) && (oldY - 1 === newY)) {
+            return 'up'
+          } else if ((oldX === newX - 1) && (oldY === newY)) {
+            return 'right'
+          } else if ((oldX === newX) && (oldY === newY - 1)) {
+            return 'down'
+          } else if ((oldX - 1 === newX) && (oldY === newY)) {
+            return 'left'
+          } else if ((oldX === newX) && (oldY === newY)) {
+            return 'stay' // Did not move
+          } else if (oldX !== undefined && oldY !== undefined) {
+            return 'warp' // Non-adjacent movement
+          }
+          // else { // unused
+          //   return 'appear' // First draw
+          // }
+        }
+
+        function playerDeleteFrom (playerId, oldX, oldY) {
+          $mapContainer.find(`.row:eq(${oldY})`).find(`.tile:eq(${oldX})`).find('.player ' + playerClass(playerId)).remove()
+        }
+
+        function playerClass (playerId, useDot = true) {
+          return `${useDot ? '.' : ''}player${playerId + 1}`
+        }
+
+        // TODO: playerId => playerTeamId ?????
+        function putPlayerAt (playerId, x, y) {
+          // TODO: classes, IDs, etc
+          // TODO: less hacky garbage
+          // const playerClass = `human_${playerId + 1}`
+
+          $mapContainer.find(`.row:eq(${y})`).find(`.tile:eq(${x})`).append(`<div class="player ${playerClass(playerId, false)}"></div>`)
+        }
+
+        // TODO: find the item that needs to be moved
+        // TODO: switch to TweenLite
+        function movePlayerTo ($player = null, direction, amount = TILE_SIZE) {
+          // console.log('movePlayerTo hit with direction: ' + direction)
+          // Tweenlite.to($player, 0.1, {left: -32});
+          switch(direction) {
+            case 'up':
+              TweenMax.to($player, 0.1, {y: `-=${amount}`});
+              break
+            case 'right':
+              TweenMax.to($player, 0.1, {x: `+=${amount}`});
+              break
+            case 'down':
+              TweenMax.to($player, 0.1, {y: `+=${amount}`});
+              break
+            case 'left':
+              TweenMax.to($player, 0.1, {x: `-=${amount}`});
+              break
+          }
+        }
 
         // TODO: make this into a class, and give it an update method
         let playerId = null
@@ -155,7 +272,7 @@
         })
 
         socket.on('movementTimer', movementTimerSecondsRemaining => {
-          console.log(Math.random() + ')movementTimer: ' + movementTimerSecondsRemaining)
+          // console.log(Math.random() + ')movementTimer: ' + movementTimerSecondsRemaining)
           // Set the movement timer, and show whose turn it is for
           $movementTimeRemaining.html(movementTimerSecondsRemaining)
         })
@@ -177,10 +294,10 @@
         socket.on('playerAnimation', passedPlayerAnimationInfo => {
           // Get the playerId, class on the page, direction, action, and timing
           // Find the player on the screen
-          console.log(passedPlayerAnimationInfo.playerIndex)
-          $player = $()
 
-          player.addClass(passedPlayerAnimationInfo.animationClass)
+          $player = $(playerClass(playerId))
+
+          $player.addClass(passedPlayerAnimationInfo.animationClass)
           setTimeout( () => {
             player.removeClass(passedPlayerAnimationInfo.animationClass)
           }, passedPlayerAnimationInfo.animationLength)
@@ -210,20 +327,6 @@
           })
           // TODO: better styles for this
           $playerListContainer.find('ul').html(builtList)
-        }
-
-        // TODO: what is this? Not DRY?
-        function drawPlayer (playerId, x, y) {
-          // TODO: classes, IDs, etc
-          // TODO: less hacky garbage
-          // const playerClass = `human_${playerId + 1}`
-          if (playerId === 0) {
-            playerClass = 'player1'
-          } else if (playerId === 1) {
-            playerClass = 'player2'
-          }
-
-          $mapContainer.find(`.row:eq(${y})`).find(`.tile:eq(${x})`).append(`<div class="player ${playerClass}"></div>`)
         }
 
         function buildMap (map) {

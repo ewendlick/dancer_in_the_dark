@@ -67,7 +67,7 @@ io.on('connection', (socket) => {
     io.to(`${socket.id}`).emit('map', seen(socket.id))
 
     PLAYERS.playersPublicInfo().forEach(player => {
-      io.to(`${socket.id}`).emit('players', visiblePlayersFor(socket.id))
+      io.to(`${player.socketId}`).emit('players', visiblePlayersFor(player.socketId))
     })
 
     // TODO: figure out how to display that there are not enough players. Make it another emit??
@@ -101,7 +101,7 @@ io.on('connection', (socket) => {
       io.to(`${socket.id}`).emit('map', seen(socket.id))
 
       PLAYERS.playersPublicInfo().forEach(player => {
-        io.to(`${player.socketId}`).emit('players', visiblePlayersFor(socket.id))
+        io.to(`${player.socketId}`).emit('players', visiblePlayersFor(player.socketId))
       })
 
       io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
@@ -219,8 +219,12 @@ function resolveTile (socketId) {
     // TODO: Reduce moves? Apply damage? Stun the player?
     emitMessage(random.trapStrike(), 'event', 'self', socketId)
     emitMessage('Your turn ends!', 'failure', 'self', socketId)
+    MAP.removeItemAt(player.x, player.y, MAP.TILE_TYPE.TRAP)
     emitMessage('Someone triggered a trap!', 'event', 'others', socketId)
-    PLAYERS.turnDone()
+    // Do not trigger turnDone if it is already triggered by movement
+    if (!PLAYERS.playersMovesRemaining(socketId) <= 0) {
+      PLAYERS.turnDone()
+    }
     resetTimer()
   }
   // TODO: else if teleporter
@@ -452,15 +456,20 @@ function stabSword (socketId, keyCode) {
   let x = player.x
   let y = player.y
   const UNMOVEABLE = -1
+  let direction = ''
 
   if (keyCode === INPUT.LEFT) {
     x -= 1
+    direction = 'left' // TODO: consider a unified direction system to tie in with INPUT(?)
   } else if (keyCode === INPUT.UP) {
     y -= 1
+    direction = 'up'
   } else if (keyCode === INPUT.RIGHT) {
     x += 1
+    direction = 'right'
   } else if (keyCode === INPUT.DOWN) {
     y += 1
+    direction = 'down'
   }
 
   if (MAP.movementImpedimentMap[y][x] === UNMOVEABLE) {
@@ -469,21 +478,24 @@ function stabSword (socketId, keyCode) {
     // TODO: checking against moveability. this message may not be appropriate
     emitMessage('You strike at a wall', 'event', 'self', socketId)
     emitMessage('You hear a loud sound as some dingdong hits a wall with a sword', 'event', 'all')
-    break
   } else if (MAP.isItemAt(x, y, MAP.TILE_TYPE.TREASURE)) {
     emitMessage('You strike at the treasure', 'event', 'self', socketId)
     emitMessage('You hear a loud sound as some dingdong hits the treasure with a sword', 'event', 'others', socketId)
-    break
   }
 
   if (tileHas(x, y) === 'player') {
     const struckPlayer = strikePlayerAt(x, y)
     // TODO: Message to the person struck...
+
+
+
+    // TODO: error fired here
+
+
     emitMessage(random.stabSword(struckPlayer.name), 'event', 'self', socketId)
-    break
   }
 
-  io.to(`${player.socketId}`).emit('movesRemaining', PLAYERS.playersMovesRemaining(player.socketId))
+  emitAnimation(socketId, direction, 'sword-stab-'+direction)
 
   // TODO: animation only for those that are visible
 }
@@ -491,16 +503,12 @@ function stabSword (socketId, keyCode) {
 // TODO: think about this. Why pass so many arguments just to build an object?
 function emitAnimation (socketId, direction, animationClass, animationLength = 1000) {
   const animation = {
-    socketId: socketId,
+    playerIndex: PLAYERS.thisPlayerIndex(socketId),
     direction: direction,
     animationClass: animationClass,
     animationLength: animationLength
   }
-  if (socketId) {
-    io.to(`${socketId}`).emit('playerAnimation', animation)
-  } else {
-
-  }
+  io.to(`${socketId}`).emit('playerAnimation', animation)
 }
 
 // TODO: update this to return players as well as items as two arrays
