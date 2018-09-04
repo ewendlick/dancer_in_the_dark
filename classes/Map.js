@@ -256,6 +256,7 @@ module.exports = class Map {
   }
 
   // TODO: update to display items
+  // TODO: check out this amazing page: http://www.adammil.net/blog/v125_Roguelike_Vision_Algorithms.html#diamondwalls
   visibleMap (player) {
     const viewDistance = player.status.viewDistance
     // TODO: check if there is a wall directly in front of them in a direction and skip this logic if true

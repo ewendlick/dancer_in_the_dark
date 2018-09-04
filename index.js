@@ -492,7 +492,8 @@ function stabSword (socketId, keyCode) {
     // TODO: error fired here
 
 
-    emitMessage(random.stabSword(struckPlayer.name), 'event', 'self', socketId)
+    // TODO: figure out naming. swordStrike, swordStab, swordAttack, attackSword, etc
+    emitMessage(random.swordStrike(struckPlayer.name), 'event', 'self', socketId)
   }
 
   emitAnimation(socketId, direction, 'sword-stab-'+direction)

@@ -295,11 +295,12 @@
           // Get the playerId, class on the page, direction, action, and timing
           // Find the player on the screen
 
-          $player = $(playerClass(playerId))
+          $player = $(playerClass(passedPlayerAnimationInfo.playerIndex))
 
-          $player.addClass(passedPlayerAnimationInfo.animationClass)
+          // TODO: will we carry things? we need to save the divs inside first
+          $player.html('<div class="sword"></div>').find('.sword').addClass(passedPlayerAnimationInfo.animationClass)
           setTimeout( () => {
-            player.removeClass(passedPlayerAnimationInfo.animationClass)
+            $player.find('.sword').removeClass(passedPlayerAnimationInfo.animationClass)
           }, passedPlayerAnimationInfo.animationLength)
         })
 
@@ -522,20 +523,75 @@
       box-shadow: inset 0 1px 2px rgba(27,31,35,0.075);
     }
 
+    .sword-stab-up {
+      position: relative;
+      height: 10px;
+      width: 10px;
+      background-color: #e5e;
+      animation: stab-up 1s infinite; /* need setTimeout of 1000 */
+      z-index: 3;
+    }
+
     .sword-stab-right {
       position: relative;
       height: 10px;
       width: 10px;
       background-color: #e5e;
-      animation: stab-right 1 infinite; /* need setTimeout of 1000 */
+      animation: stab-right 1s infinite; /* need setTimeout of 1000 */
+      z-index: 3;
+    }
+
+    .sword-stab-down {
+      position: relative;
+      height: 10px;
+      width: 10px;
+      background-color: #e5e;
+      animation: stab-down 1s infinite; /* need setTimeout of 1000 */
+      z-index: 3;
+    }
+
+    .sword-stab-left {
+      position: relative;
+      height: 10px;
+      width: 10px;
+      background-color: #e5e;
+      animation: stab-left 1s infinite; /* need setTimeout of 1000 */
+      z-index: 3;
+    }
+
+    @keyframes stab-up {
+      0%, 100% {
+        top: 0;
+      }
+      10% {
+        top: -20px;
+      }
     }
 
     @keyframes stab-right {
       0%, 100% {
+        left: 22px; /* based off of 32px size of tile */
+      }
+      10% {
+        left: 44px;
+      }
+    }
+
+    @keyframes stab-down {
+      0%, 100% {
+        top: 22px; /* based off of 32px size of tile */
+      }
+      10% {
+        top: 44px;
+      }
+    }
+
+    @keyframes stab-left {
+      0%, 100% {
         left: 0;
       }
       10% {
-        left: 20px;
+        left: -20px;
       }
     }
     </style>
