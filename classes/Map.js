@@ -435,4 +435,25 @@ module.exports = class Map {
   isMoveable (movementTile) {
     return movementTile >= MOVEABLE // currently MOVEABLE is always 1. This will change later when "moves" are implemented
   }
+
+  // Used in a huge rewrite
+  // blocksLight (x, y, check = this._movementImpedimentMap) {
+  //   // TODO: NONE of these return anything
+  //   // console.log(this._map)
+  //   // console.log(this.map)
+  //   // console.log(map)
+  //   // console.log(this._width)
+  //   // console.log('=====')
+  //   // console.log(this.width)
+  //   // console.log('blocksLight')
+  //   // console.log(check)
+  //   // console.log(this._movementImpedimentMap)
+  //   return this.isMoveable(this._movementImpedimentMap[y][x])
+  // }
+
+  // TODO: probably need to move this out
+  setVisible (x, y) {
+    // ???
+    return true
+  }
 }

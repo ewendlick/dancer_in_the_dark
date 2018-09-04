@@ -16,6 +16,8 @@ const INPUT = require('./lib/input')
 const random = require('./lib/random')
 const DEFAULT_TIME_SECONDS = 10
 
+const Visibility = require('./classes/Visibility')
+
 // TIMER THINGS
 let timerSeconds = 0
 const timerTick = () => {
@@ -54,6 +56,9 @@ io.on('connection', (socket) => {
   PLAYERS.addPlayer(socket.id, MAP.unseenBgMap, MAP.unseenItemMap)
   io.emit('playersPublicInfo', PLAYERS.playersPublicInfo())
   io.to(`${socket.id}`).emit('playerId', socket.id)
+  
+  
+  return visible(socket.id)
 
   // "Constructor"
   if (PLAYERS.isEnoughPlayers) {
@@ -178,20 +183,27 @@ function emitMessage (payload, type = 'general', target = 'all', socketId = null
 }
 
 function seen (socketId) {
-  const visibleMap = visible(socketId)
-  return PLAYERS.updateSeenMap(socketId, visibleMap.shownBgMap, visibleMap.shownItemMap, visibleMap.fogOfWarMap)
+  // TODO: need to rewrite all of this
+  // const visibleMap = visible(socketId)
+  // return PLAYERS.updateSeenMap(socketId, visibleMap.shownBgMap, visibleMap.shownItemMap, visibleMap.fogOfWarMap)
 }
 
 // TODO: should we move the visiblePlayersFor into here?
 // TODO: run this once for their turn?
 function visible (socketId) {
   const player = PLAYERS.thisPlayer(socketId)
-  return MAP.visibleMap(player)
+
+  // TODO: here we go!!!!!
+  // return MAP.visibleMap(player)
+  const visibility = new Visibility(MAP, MAP.setVisible)
+  console.log('HIT-----------')
+  console.log(visibility.compute({X:1, Y:1}, 5))
+  return visibility.compute({X:1, Y:1}, 5)
 }
 
 function visiblePlayersFor (socketId) {
   // TODO: Incomplete. Returning all players
-  return PLAYERS.visiblePlayers(visible(socketId).shownBgMap)
+  // return PLAYERS.visiblePlayers(visible(socketId).shownBgMap)
 }
 
 function resolveTile (socketId) {
