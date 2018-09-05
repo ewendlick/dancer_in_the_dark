@@ -340,7 +340,7 @@
             builtMap += '<div class="row">'
             for (let x = 0; x < bgMap[0].length; x++) {
               // TODO: how should fow be displayed above other content?
-              builtMap += `<div class="tile ${tileBgClass(bgMap[y][x])} ">${fogOfWarMap[y][x] ? '<div class="fog-of-war"></div>' : ''}${items(itemMap[y][x])}</div>`
+              builtMap += `<div class="tile ${tileBgClass(bgMap[y][x])} ">${!fogOfWarMap[y][x] ? '<div class="fog-of-war"></div>' : ''}${items(itemMap[y][x])}</div>`
             }
             builtMap += '</div>'
           }

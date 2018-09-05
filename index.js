@@ -8,7 +8,8 @@ const port = process.env.PORT || 3001
 const express = require('express')
 
 const map = require('./classes/Map')
-const MAP = new map
+const maps = require('./lib/maps')
+const MAP = new map(maps.basicBg, maps.basicMovementImpediment)
 const printOut = require('./lib/printOut')
 const players = require('./classes/Players')
 const PLAYERS = new players
@@ -17,6 +18,7 @@ const random = require('./lib/random')
 const DEFAULT_TIME_SECONDS = 10
 
 const Visibility = require('./classes/Visibility')
+const VISIBILITY = new Visibility(MAP)
 
 // TIMER THINGS
 let timerSeconds = 0
@@ -56,9 +58,6 @@ io.on('connection', (socket) => {
   PLAYERS.addPlayer(socket.id, MAP.unseenBgMap, MAP.unseenItemMap)
   io.emit('playersPublicInfo', PLAYERS.playersPublicInfo())
   io.to(`${socket.id}`).emit('playerId', socket.id)
-  
-  
-  return visible(socket.id)
 
   // "Constructor"
   if (PLAYERS.isEnoughPlayers) {
@@ -143,11 +142,11 @@ io.on('connection', (socket) => {
       console.log(chalk.green(`Accepted input from: ${socket.id}`))
       // TODO: emit messages to people involved
 
-      //   io.to(`${socket.id}`).emit('map', seen(socket.id))
+      io.to(`${socket.id}`).emit('map', seen(socket.id))
 
-      //   PLAYERS.playersPublicInfo().forEach(player => {
-      //     io.to(`${player.socketId}`).emit('players', visiblePlayersFor(socket.id))
-      //   })
+      PLAYERS.playersPublicInfo().forEach(player => {
+        io.to(`${player.socketId}`).emit('players', visiblePlayersFor(socket.id))
+      })
 
       io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
     }
@@ -184,8 +183,8 @@ function emitMessage (payload, type = 'general', target = 'all', socketId = null
 
 function seen (socketId) {
   // TODO: need to rewrite all of this
-  // const visibleMap = visible(socketId)
-  // return PLAYERS.updateSeenMap(socketId, visibleMap.shownBgMap, visibleMap.shownItemMap, visibleMap.fogOfWarMap)
+  const visibleMap = visible(socketId)
+  return PLAYERS.updateSeenMap(socketId, visibleMap.shownBgMap, visibleMap.shownItemMap, visibleMap.fogOfWarMap)
 }
 
 // TODO: should we move the visiblePlayersFor into here?
@@ -193,17 +192,16 @@ function seen (socketId) {
 function visible (socketId) {
   const player = PLAYERS.thisPlayer(socketId)
 
-  // TODO: here we go!!!!!
-  // return MAP.visibleMap(player)
-  const visibility = new Visibility(MAP, MAP.setVisible)
-  console.log('HIT-----------')
-  console.log(visibility.compute({X:1, Y:1}, 5))
-  return visibility.compute({X:1, Y:1}, 5)
+  // TODO: pass in the location of the player and their vision distance here
+  // TODO: oh no, is range limit something that refers to the map size?
+  // console.log(VISIBILITY.compute({X:player.x, Y:player.y}, 5))
+  return MAP.visibleMap(player, VISIBILITY.compute({X:player.x, Y:player.y}, 3))
 }
 
 function visiblePlayersFor (socketId) {
   // TODO: Incomplete. Returning all players
-  // return PLAYERS.visiblePlayers(visible(socketId).shownBgMap)
+  // TODO: implement Visibility class here to determine which players to draw
+  return PLAYERS.visiblePlayers(visible(socketId).shownBgMap)
 }
 
 function resolveTile (socketId) {
@@ -221,6 +219,7 @@ function resolveTile (socketId) {
     MAP.spawnItemAt(1, 1, MAP.TILE_TYPE.EXIT)
 
   } else if (MAP.isItemAt(player.x, player.y, MAP.TILE_TYPE.EXIT)) {
+    // TODO: It's possible for one player to grab the treasure and the other to trigger a win condition
     if (PLAYERS.viewInventory(socketId, 'treasure') > 0) {
       console.log(chalk.yellow('Exit found by: ' + socketId))
       emitMessage('You win!', 'event', 'self', socketId)
