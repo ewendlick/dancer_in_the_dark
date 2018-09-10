@@ -34,7 +34,7 @@ function getDistance (origin, x, y) {
   // 
   // TODO: this is probably responsible for making the view distance into a giant square
   // Now, with distance of 3, it's almost a square but looks nice
-  return Math.abs((origin.X - Math.abs(x))) + Math.abs((origin.Y - Math.abs(y)))
+  return Math.abs((origin.x - Math.abs(x))) + Math.abs((origin.y - Math.abs(y)))
 }
 
 function toValid (value, limit) {
@@ -75,7 +75,7 @@ module.exports = class DiamondWallsVisibility {
 
   // origin format {x: x, y: y}
   compute (origin, viewDistance = 3) {
-    this._setVisible(origin.X, origin.Y)
+    this._setVisible(origin.x, origin.y)
     for(let octant = 0; octant < 8; octant++) {
       this._compute(octant, origin, viewDistance, 1, new Slope(1, 1), new Slope(0, 1))
     }
@@ -93,11 +93,11 @@ module.exports = class DiamondWallsVisibility {
   _compute (octant, origin, viewDistance, x, top, bottom) {
     let topY = null
     for(; x <= viewDistance; x++) {
-      if (top.X === 1){
+      if (top.x === 1){
         topY = x
       } else { // top tile is not a wall
-        topY = ((x*2-1) * top.Y + top.X) / (top.X*2) // get the tile that the top vector enters from the left
-        let ay = (topY*2+1) * top.X
+        topY = ((x*2-1) * top.y + top.x) / (top.x*2) // get the tile that the top vector enters from the left
+        let ay = (topY*2+1) * top.x
         if (this.isBlocksLight(x, topY, octant, origin)) { // if the top tile is a wall...
           if(top.greaterOrEqual(ay, x*2)) { // but the top vector misses the wall and passes into the tile above, move up
             topY++
@@ -109,11 +109,11 @@ module.exports = class DiamondWallsVisibility {
         }
       }
 
-      let bottomY = bottom.Y === 0 ? 0 : ((x*2-1) * bottom.Y + bottom.X) / (bottom.X*2)
+      let bottomY = bottom.y === 0 ? 0 : ((x*2-1) * bottom.y + bottom.x) / (bottom.x*2)
       let wasOpaque = -1 // 0:false, 1:true, -1:not applicable
       for (let y = topY; y >= bottomY; y--) {
-        let tx = origin.X
-        let ty = origin.Y
+        let tx = origin.x
+        let ty = origin.y
 
         switch(octant) // translate local coordinates to map coordinates
         {
@@ -214,16 +214,6 @@ class Slope {
     return this._y * x <= this._x > y
   }
 
-  get X () {
-    return this._x
-  }
-
-  get Y () {
-    return this._y
-  }
-
-
-  // TODO: figure out if we want the above to be capital
   get x () {
     return this._x
   }

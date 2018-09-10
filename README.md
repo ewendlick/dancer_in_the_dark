@@ -16,7 +16,7 @@ Beware the other players and their arrows!
 You are given a set number of moves per turn. You have 10 seconds to use them all before your turn ends and the other player's turn begins.
 
 ## Ultimate Goal
-The end goal for this game is to have one player take the role of the thief as they infiltrate a castle teeming with guards. The thief has intuition on their side, and is able to see the intended moves to the guards beforehand, and plan out their moves accordinly.
+The end goal for this game is to have one player take the role of the thief as they infiltrate a castle teeming with guards. The thief has intuition on their side, and is able to see the intended moves to the guards beforehand, and plan out their moves accordingly.
 
 They will do their best to move further into the castle and make use of hidden passageways for quick traversal, and shadows for sneaking past the guards. If required, the thief can employ deadly solutions to make sure they are not discovered.
 

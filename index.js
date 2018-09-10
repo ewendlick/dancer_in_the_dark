@@ -191,11 +191,8 @@ function seen (socketId) {
 // TODO: run this once for their turn?
 function visible (socketId) {
   const player = PLAYERS.thisPlayer(socketId)
-
-  // TODO: pass in the location of the player and their vision distance here
   // TODO: oh no, is range limit something that refers to the map size?
-  // console.log(VISIBILITY.compute({X:player.x, Y:player.y}, 5))
-  return MAP.visibleMap(player, VISIBILITY.compute({X:player.x, Y:player.y}, 3))
+  return MAP.visibleMap(player, VISIBILITY.compute({x:player.x, y:player.y}, 3))
 }
 
 function visiblePlayersFor (socketId) {
