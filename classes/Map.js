@@ -43,8 +43,6 @@ module.exports = class Map {
   }
 
 
-  // TODO: consider prefixing the local variables with an underscore
-  // This is a good idea, implementing
   get width () {
     return this._width
   }
@@ -256,8 +254,6 @@ module.exports = class Map {
   }
 
   // TODO: update to display items
-  // TODO: check out this amazing page: http://www.adammil.net/blog/v125_Roguelike_Vision_Algorithms.html#diamondwalls
-  //
   visibleMap (player, visibilityMaskMap) {
     let shownBgMap = player.seenBgMap
     let shownItemMap = player.seenItemMap

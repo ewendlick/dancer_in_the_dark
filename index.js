@@ -104,9 +104,7 @@ io.on('connection', (socket) => {
 
       io.to(`${socket.id}`).emit('map', seen(socket.id))
 
-      PLAYERS.playersPublicInfo().forEach(player => {
-        io.to(`${player.socketId}`).emit('players', visiblePlayersFor(player.socketId))
-      })
+      emitPlayers()
 
       io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
 
@@ -144,9 +142,7 @@ io.on('connection', (socket) => {
 
       io.to(`${socket.id}`).emit('map', seen(socket.id))
 
-      PLAYERS.playersPublicInfo().forEach(player => {
-        io.to(`${player.socketId}`).emit('players', visiblePlayersFor(socket.id))
-      })
+      emitPlayers()
 
       io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
     }
@@ -181,10 +177,17 @@ function emitMessage (payload, type = 'general', target = 'all', socketId = null
   }
 }
 
+function emitPlayers () {
+  PLAYERS.playersPublicInfo().forEach(player => {
+    io.to(`${player.socketId}`).emit('players', visiblePlayersFor(player.socketId))
+  })
+}
+
 function seen (socketId) {
   // TODO: need to rewrite all of this
-  const visibleMap = visible(socketId)
-  return PLAYERS.updateSeenMap(socketId, visibleMap.shownBgMap, visibleMap.shownItemMap, visibleMap.fogOfWarMap)
+  // const visibleMap = visible(socketId)
+  // TODO: consider a visibility mask which gets passed in
+  return PLAYERS.updateSeenMap(socketId, visible(socketId))
 }
 
 // TODO: should we move the visiblePlayersFor into here?
@@ -192,13 +195,14 @@ function seen (socketId) {
 function visible (socketId) {
   const player = PLAYERS.thisPlayer(socketId)
   // TODO: oh no, is range limit something that refers to the map size?
-  return MAP.visibleMap(player, VISIBILITY.compute({x:player.x, y:player.y}, 3))
+  return MAP.visibleMap(player, VISIBILITY.compute({x:player.x, y:player.y}, player.status.viewDistance))
 }
 
+// TODO: do we even need this? It's like an extra step
 function visiblePlayersFor (socketId) {
-  // TODO: Incomplete. Returning all players
-  // TODO: implement Visibility class here to determine which players to draw
-  return PLAYERS.visiblePlayers(visible(socketId).shownBgMap)
+  const visibleMap = visible(socketId)
+  printOut.humanReadableFogOfWarMap(visibleMap.fogOfWarMap)
+  return PLAYERS.visiblePlayers(visibleMap.fogOfWarMap)
 }
 
 function resolveTile (socketId) {

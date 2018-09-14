@@ -141,10 +141,9 @@ module.exports = class Players {
     })
   }
 
-  visiblePlayers (visibleMap) {
-    // If a player is on a square that is not 0, display them
+  visiblePlayers (maskMap) {
     return this.players.filter(player => {
-      return visibleMap[player.y][player.x] !== 0
+      return maskMap[player.y][player.x] === true
     })
   }
 
@@ -155,19 +154,25 @@ module.exports = class Players {
     })
   }
 
-  // TODO: just pass in the map and split it inside of here? (Such a better idea now)
-  updateSeenMap (socketId, visibleBgMap, visibleItemMap, fogOfWarMap) {
-    // add the visiblemap to the particular player's seenBgMap
-    // fog of war tiles are appended with.... what? '░'?
-    // update anything that is not '0' (hidden)
+  // TODO: this needs a huge rewrite that goes beyond the scope of this PR. I want to merge this and work on other things. Gah
+  // passing in map because that's simple.
+  updateSeenMap (socketId, visibleMap) {
+    console.log('-------------------')
+    console.log(visibleMap)
+    console.log('object keys')
+    // console.log(Object.keys(visibleMap))
     let seenBgMap = this.thisPlayer(socketId).seenBgMap
     let seenItemMap = this.thisPlayer(socketId).seenItemMap
     // console.log(seenBgMap)
 
+    // TODO: call the variable itemX? No clue. Hot mess, needs rewrite
     seenBgMap = seenBgMap.map((row, indexY) => {
       return row.map((itemX, indexX) => {
-        if (visibleBgMap[indexY][indexX] !== '0') {
-          return visibleBgMap[indexY][indexX]
+        // WE NEED TO PASS IN THE MAP
+
+        if (visibleMap.shownBgMap[indexY][indexX] !== '0') {
+          // TODO: does this need to come from the map itself???
+          return visibleMap.shownBgMap[indexY][indexX]
         } else {
           return itemX
         }
@@ -177,8 +182,9 @@ module.exports = class Players {
     // TODO: combine all of these into the same loops? The map is always the same size
     seenItemMap = seenItemMap.map((row, indexY) => {
       return row.map((itemX, indexX) => {
-        if (visibleItemMap[indexY][indexX] !== null) {
-          return visibleItemMap[indexY][indexX]
+        if (visibleMap.shownItemMap[indexY][indexX] !== null) {
+          // TODO: does this need to come from the map itself????
+          return visibleMap.shownItemMap[indexY][indexX]
         } else {
           return itemX
         }
@@ -192,7 +198,7 @@ module.exports = class Players {
     // I am unsure about this all and wonder if I should just be returning
     // true/false and then setting up tests
 
-    return { seenBgMap, seenItemMap, fogOfWarMap }
+    return { seenBgMap, seenItemMap, fogOfWarMap: visibleMap.fogOfWarMap }
   }
 
   setRelativePosition (socketId, x, y) {

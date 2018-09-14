@@ -48,6 +48,7 @@ function toValid (value, limit) {
 }
 
 // TODO: should we be passing in a map?
+// Ported code from http://www.adammil.net/blog/v125_Roguelike_Vision_Algorithms.html#diamondwalls
 module.exports = class DiamondWallsVisibility {
   // constructor (map, blocksLightFunction, setVisibleFunction, getDistanceFunction = getDistance) {
   constructor (map) {
