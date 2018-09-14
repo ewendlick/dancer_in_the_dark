@@ -157,13 +157,9 @@ module.exports = class Players {
   // TODO: this needs a huge rewrite that goes beyond the scope of this PR. I want to merge this and work on other things. Gah
   // passing in map because that's simple.
   updateSeenMap (socketId, visibleMap) {
-    console.log('-------------------')
-    console.log(visibleMap)
-    console.log('object keys')
-    // console.log(Object.keys(visibleMap))
+    // console.log(visibleMap)
     let seenBgMap = this.thisPlayer(socketId).seenBgMap
     let seenItemMap = this.thisPlayer(socketId).seenItemMap
-    // console.log(seenBgMap)
 
     // TODO: call the variable itemX? No clue. Hot mess, needs rewrite
     seenBgMap = seenBgMap.map((row, indexY) => {
@@ -191,6 +187,10 @@ module.exports = class Players {
       })
     })
 
+
+    // TODO: this section is the likely culprit of shared vision
+
+    // console.log(this.thisPlayerIndex(socketId))
     // TODO: can I do thisPlayer(socketId).seenBgMap = seenBgMap ? Try this later
     this.players[this.thisPlayerIndex(socketId)].seenBgMap = seenBgMap
     this.players[this.thisPlayerIndex(socketId)].seenItemMap = seenItemMap

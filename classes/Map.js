@@ -254,6 +254,7 @@ module.exports = class Map {
   }
 
   // TODO: update to display items
+  // TODO: this is weird in its purpose. updateSeenmap in players is probably where this should go...right?
   visibleMap (player, visibilityMaskMap) {
     let shownBgMap = player.seenBgMap
     let shownItemMap = player.seenItemMap

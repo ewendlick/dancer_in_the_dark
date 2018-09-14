@@ -76,6 +76,9 @@ module.exports = class DiamondWallsVisibility {
 
   // origin format {x: x, y: y}
   compute (origin, viewDistance = 3) {
+    // I wonder if we should handle seen content in here, and give each player an instance of this class.
+    this._visibleMap = [...Array(this._map.height)].map(columnItem => Array(this._map.width).fill(false))
+
     this._setVisible(origin.x, origin.y)
     for(let octant = 0; octant < 8; octant++) {
       this._compute(octant, origin, viewDistance, 1, new Slope(1, 1), new Slope(0, 1))

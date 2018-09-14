@@ -70,9 +70,11 @@ io.on('connection', (socket) => {
 
     io.to(`${socket.id}`).emit('map', seen(socket.id))
 
-    PLAYERS.playersPublicInfo().forEach(player => {
-      io.to(`${player.socketId}`).emit('players', visiblePlayersFor(player.socketId))
-    })
+
+    emitPlayers()
+    // PLAYERS.playersPublicInfo().forEach(player => {
+    //   io.to(`${player.socketId}`).emit('players', visiblePlayersFor(player.socketId))
+    // })
 
     // TODO: figure out how to display that there are not enough players. Make it another emit??
     io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
@@ -177,16 +179,20 @@ function emitMessage (payload, type = 'general', target = 'all', socketId = null
   }
 }
 
+// TODO: possibly the cause of updating fog of war incorrectly
+// THIS IS NOT THE CAUSE OF INCORRECT FOG OF WAR
 function emitPlayers () {
   PLAYERS.playersPublicInfo().forEach(player => {
     io.to(`${player.socketId}`).emit('players', visiblePlayersFor(player.socketId))
   })
 }
 
+// TODO: I now believe that the seen map is being shared.
 function seen (socketId) {
   // TODO: need to rewrite all of this
   // const visibleMap = visible(socketId)
   // TODO: consider a visibility mask which gets passed in
+  console.log(`socket id: ${socketId}`)
   return PLAYERS.updateSeenMap(socketId, visible(socketId))
 }
 
@@ -195,6 +201,8 @@ function seen (socketId) {
 function visible (socketId) {
   const player = PLAYERS.thisPlayer(socketId)
   // TODO: oh no, is range limit something that refers to the map size?
+  // TODO: OH CRAP. Each player needs their own visibility, don't they???
+  // .... wait, no, but the visible area is being stored in VISIBILITY
   return MAP.visibleMap(player, VISIBILITY.compute({x:player.x, y:player.y}, player.status.viewDistance))
 }
 
