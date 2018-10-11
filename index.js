@@ -8,13 +8,17 @@ const port = process.env.PORT || 3001
 const express = require('express')
 
 const map = require('./classes/Map')
-const MAP = new map
+const maps = require('./lib/maps')
+const MAP = new map(maps.basicBg, maps.basicMovementImpediment)
 const printOut = require('./lib/printOut')
 const players = require('./classes/Players')
 const PLAYERS = new players
 const INPUT = require('./lib/input')
 const random = require('./lib/random')
 const DEFAULT_TIME_SECONDS = 10
+
+const Visibility = require('./classes/Visibility')
+const VISIBILITY = new Visibility(MAP)
 
 // TIMER THINGS
 let timerSeconds = 0
@@ -26,6 +30,7 @@ const timerTick = () => {
     resetTimer()
   }
 }
+
 function resetTimer(seconds = DEFAULT_TIME_SECONDS) {
   io.emit('movementTimer', seconds)
   timerSeconds = seconds
@@ -65,9 +70,11 @@ io.on('connection', (socket) => {
 
     io.to(`${socket.id}`).emit('map', seen(socket.id))
 
-    PLAYERS.playersPublicInfo().forEach(player => {
-      io.to(`${player.socketId}`).emit('players', visiblePlayersFor(player.socketId))
-    })
+
+    emitPlayers()
+    // PLAYERS.playersPublicInfo().forEach(player => {
+    //   io.to(`${player.socketId}`).emit('players', visiblePlayersFor(player.socketId))
+    // })
 
     // TODO: figure out how to display that there are not enough players. Make it another emit??
     io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
@@ -99,9 +106,7 @@ io.on('connection', (socket) => {
 
       io.to(`${socket.id}`).emit('map', seen(socket.id))
 
-      PLAYERS.playersPublicInfo().forEach(player => {
-        io.to(`${player.socketId}`).emit('players', visiblePlayersFor(player.socketId))
-      })
+      emitPlayers()
 
       io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
 
@@ -137,11 +142,9 @@ io.on('connection', (socket) => {
       console.log(chalk.green(`Accepted input from: ${socket.id}`))
       // TODO: emit messages to people involved
 
-      //   io.to(`${socket.id}`).emit('map', seen(socket.id))
+      io.to(`${socket.id}`).emit('map', seen(socket.id))
 
-      //   PLAYERS.playersPublicInfo().forEach(player => {
-      //     io.to(`${player.socketId}`).emit('players', visiblePlayersFor(socket.id))
-      //   })
+      emitPlayers()
 
       io.emit('turn', PLAYERS.nextPlayersTurn(socket.id))
     }
@@ -176,21 +179,38 @@ function emitMessage (payload, type = 'general', target = 'all', socketId = null
   }
 }
 
+// TODO: possibly the cause of updating fog of war incorrectly
+// THIS IS NOT THE CAUSE OF INCORRECT FOG OF WAR
+function emitPlayers () {
+  PLAYERS.playersPublicInfo().forEach(player => {
+    io.to(`${player.socketId}`).emit('players', visiblePlayersFor(player.socketId))
+  })
+}
+
+// TODO: I now believe that the seen map is being shared.
 function seen (socketId) {
-  const visibleMap = visible(socketId)
-  return PLAYERS.updateSeenMap(socketId, visibleMap.shownBgMap, visibleMap.shownItemMap, visibleMap.fogOfWarMap)
+  // TODO: need to rewrite all of this
+  // const visibleMap = visible(socketId)
+  // TODO: consider a visibility mask which gets passed in
+  console.log(`socket id: ${socketId}`)
+  return PLAYERS.updateSeenMap(socketId, visible(socketId))
 }
 
 // TODO: should we move the visiblePlayersFor into here?
 // TODO: run this once for their turn?
 function visible (socketId) {
   const player = PLAYERS.thisPlayer(socketId)
-  return MAP.visibleMap(player)
+  // TODO: oh no, is range limit something that refers to the map size?
+  // TODO: OH CRAP. Each player needs their own visibility, don't they???
+  // .... wait, no, but the visible area is being stored in VISIBILITY
+  return MAP.visibleMap(player, VISIBILITY.compute({x:player.x, y:player.y}, player.status.viewDistance))
 }
 
+// TODO: do we even need this? It's like an extra step
 function visiblePlayersFor (socketId) {
-  // TODO: Incomplete. Returning all players
-  return PLAYERS.visiblePlayers(visible(socketId).shownBgMap)
+  const visibleMap = visible(socketId)
+  printOut.humanReadableFogOfWarMap(visibleMap.fogOfWarMap)
+  return PLAYERS.visiblePlayers(visibleMap.fogOfWarMap)
 }
 
 function resolveTile (socketId) {
@@ -208,6 +228,7 @@ function resolveTile (socketId) {
     MAP.spawnItemAt(1, 1, MAP.TILE_TYPE.EXIT)
 
   } else if (MAP.isItemAt(player.x, player.y, MAP.TILE_TYPE.EXIT)) {
+    // TODO: It's possible for one player to grab the treasure and the other to trigger a win condition
     if (PLAYERS.viewInventory(socketId, 'treasure') > 0) {
       console.log(chalk.yellow('Exit found by: ' + socketId))
       emitMessage('You win!', 'event', 'self', socketId)
@@ -340,6 +361,13 @@ function handleComboKey(socketId, keyCodes) {
       PLAYERS.turnDone()
       resetTimer()
     }
+  } else if (keyCodes[0] === INPUT.A) {
+    if (PLAYERS.performMove(socketId, 1)) {
+      // TODO: need to rewrite all of this, and decided when to deduct the move
+      stabSword(socketId, keyCodes[1])
+    } else {
+      // insufficient moves
+    }
   }
 }
 
@@ -435,6 +463,73 @@ function placeTrap (socketId, keyCode) {
   } else {
     return false
   }
+}
+
+function stabSword (socketId, keyCode) {
+  const player = PLAYERS.thisPlayer(socketId)
+
+  // if (player.inventory.arrows <= 0) {
+  //   emitMessage('You do not have any arrows!', 'event', 'self', socketId)
+  //   return false
+  // }
+
+  let x = player.x
+  let y = player.y
+  const UNMOVEABLE = -1
+  let direction = ''
+
+  if (keyCode === INPUT.LEFT) {
+    x -= 1
+    direction = 'left' // TODO: consider a unified direction system to tie in with INPUT(?)
+  } else if (keyCode === INPUT.UP) {
+    y -= 1
+    direction = 'up'
+  } else if (keyCode === INPUT.RIGHT) {
+    x += 1
+    direction = 'right'
+  } else if (keyCode === INPUT.DOWN) {
+    y += 1
+    direction = 'down'
+  }
+
+  if (MAP.movementImpedimentMap[y][x] === UNMOVEABLE) {
+    // message to the person who fired it
+    // TODO: Different messages depending on visibility?
+    // TODO: checking against moveability. this message may not be appropriate
+    emitMessage('You strike at a wall', 'event', 'self', socketId)
+    emitMessage('You hear a loud sound as some dingdong hits a wall with a sword', 'event', 'all')
+  } else if (MAP.isItemAt(x, y, MAP.TILE_TYPE.TREASURE)) {
+    emitMessage('You strike at the treasure', 'event', 'self', socketId)
+    emitMessage('You hear a loud sound as some dingdong hits the treasure with a sword', 'event', 'others', socketId)
+  }
+
+  if (tileHas(x, y) === 'player') {
+    const struckPlayer = strikePlayerAt(x, y)
+    // TODO: Message to the person struck...
+
+
+
+    // TODO: error fired here
+
+
+    // TODO: figure out naming. swordStrike, swordStab, swordAttack, attackSword, etc
+    emitMessage(random.swordStrike(struckPlayer.name), 'event', 'self', socketId)
+  }
+
+  emitAnimation(socketId, direction, 'sword-stab-'+direction)
+
+  // TODO: animation only for those that are visible
+}
+
+// TODO: think about this. Why pass so many arguments just to build an object?
+function emitAnimation (socketId, direction, animationClass, animationLength = 1000) {
+  const animation = {
+    playerIndex: PLAYERS.thisPlayerIndex(socketId),
+    direction: direction,
+    animationClass: animationClass,
+    animationLength: animationLength
+  }
+  io.to(`${socketId}`).emit('playerAnimation', animation)
 }
 
 // TODO: update this to return players as well as items as two arrays

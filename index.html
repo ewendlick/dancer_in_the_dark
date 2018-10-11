@@ -7,7 +7,6 @@
     <link rel="stylesheet" type="text/css" href="css/constructions.css" />
     <link rel="stylesheet" type="text/css" href="css/decorations.css" />
     <link rel="stylesheet" type="text/css" href="css/humans.css" />
-    <style></style>
   </head>
   <body>
     <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
@@ -35,13 +34,14 @@
           DOWN: 40,
           SPACEBAR: 32,
           F: 70, // (F)ire
+          A: 65, // (A)ttack with a sword
           T: 84, // place (T)rap
           C: 67 // (C)ancel
         }
 
         const SINGLE_KEYCODES = [KEY.LEFT, KEY.UP, KEY.RIGHT, KEY.DOWN, KEY.SPACEBAR, KEY.C]
         // Require two keys to be pressed
-        const COMBO_KEYCODES = [KEY.F, KEY.T]
+        const COMBO_KEYCODES = [KEY.A, KEY.F, KEY.T]
 
         const ALLOWED_KEYCODES = SINGLE_KEYCODES.concat(COMBO_KEYCODES)
 
@@ -81,6 +81,8 @@
               previousKey = keyCode
               if (keyCode === KEY.F) {
                 addMessage({payload: 'You notch an arrow. Which direction do you shoot?', type: 'event'})
+              } else if (keyCode === KEY.A) {
+                addMessage({payload: 'You ready your sword. Which direction do you stab?', type: 'event'})
               }
             } else if (previousKey !== null && isSingleKey(keyCode)) { // finish action
               emitComboKey([previousKey, keyCode])
@@ -289,6 +291,19 @@
           updatePlayerNames()
         })
 
+        socket.on('playerAnimation', passedPlayerAnimationInfo => {
+          // Get the playerId, class on the page, direction, action, and timing
+          // Find the player on the screen
+
+          $player = $(playerClass(passedPlayerAnimationInfo.playerIndex))
+
+          // TODO: will we carry things? we need to save the divs inside first
+          $player.html('<div class="sword"></div>').find('.sword').addClass(passedPlayerAnimationInfo.animationClass)
+          setTimeout( () => {
+            $player.find('.sword').removeClass(passedPlayerAnimationInfo.animationClass)
+          }, passedPlayerAnimationInfo.animationLength)
+        })
+
         function updatePlayerNames () {
           if (playersPublicInfo === [] || turn === null || playerId === null) {
             return
@@ -325,7 +340,7 @@
             builtMap += '<div class="row">'
             for (let x = 0; x < bgMap[0].length; x++) {
               // TODO: how should fow be displayed above other content?
-              builtMap += `<div class="tile ${tileBgClass(bgMap[y][x])} ">${fogOfWarMap[y][x] ? '<div class="fog-of-war"></div>' : ''}${items(itemMap[y][x])}</div>`
+              builtMap += `<div class="tile ${tileBgClass(bgMap[y][x])} ">${!fogOfWarMap[y][x] ? '<div class="fog-of-war"></div>' : ''}${items(itemMap[y][x])}</div>`
             }
             builtMap += '</div>'
           }
@@ -508,23 +523,77 @@
       box-shadow: inset 0 1px 2px rgba(27,31,35,0.075);
     }
 
-    /* Still considering all of this. Moves may need to be limited to one player per map update */
-    /*
-    .move-right {
-      -webkit-animation: player-move-right 0.1s forwards;
-      -webkit-animation-delay: 0.0s;
-      animation: player-move-right 0.1s forwards;
-      animation-delay: 0.0s;
+    .sword-stab-up {
+      position: relative;
+      height: 10px;
+      width: 10px;
+      background-color: #e5e;
+      animation: stab-up 1s infinite; /* need setTimeout of 1000 */
+      z-index: 3;
     }
 
-    @-webkit-keyframes player-move-right {
-      100% { left: 32px; }
+    .sword-stab-right {
+      position: relative;
+      height: 10px;
+      width: 10px;
+      background-color: #e5e;
+      animation: stab-right 1s infinite; /* need setTimeout of 1000 */
+      z-index: 3;
     }
 
-    @keyframes player-move-right {
-      100% { left: 32px; }
+    .sword-stab-down {
+      position: relative;
+      height: 10px;
+      width: 10px;
+      background-color: #e5e;
+      animation: stab-down 1s infinite; /* need setTimeout of 1000 */
+      z-index: 3;
     }
-    */
+
+    .sword-stab-left {
+      position: relative;
+      height: 10px;
+      width: 10px;
+      background-color: #e5e;
+      animation: stab-left 1s infinite; /* need setTimeout of 1000 */
+      z-index: 3;
+    }
+
+    @keyframes stab-up {
+      0%, 100% {
+        top: 0;
+      }
+      10% {
+        top: -20px;
+      }
+    }
+
+    @keyframes stab-right {
+      0%, 100% {
+        left: 22px; /* based off of 32px size of tile */
+      }
+      10% {
+        left: 44px;
+      }
+    }
+
+    @keyframes stab-down {
+      0%, 100% {
+        top: 22px; /* based off of 32px size of tile */
+      }
+      10% {
+        top: 44px;
+      }
+    }
+
+    @keyframes stab-left {
+      0%, 100% {
+        left: 0;
+      }
+      10% {
+        left: -20px;
+      }
+    }
     </style>
     <div id="page">
       <header>
